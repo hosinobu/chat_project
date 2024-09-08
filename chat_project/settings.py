@@ -176,3 +176,5 @@ LOGGING = {
 		'propagate': True,
     },
 }
+
+ALLOWED_HOSTS = ['hosinobu.pythonanywhere.com']
