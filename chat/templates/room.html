@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load static %}
+{% block header %}
+<link rel="stylesheet" href = "{% static 'chat/css/lobby.css' %}">
+{% endblock %}
+{% block body %}
+
+	<h1>{{ room.id }}番部屋　{{room.name}}へようこそ</h1>
+
+
+	{% include 'chat.html' %}
+	{% include 'userlist.html' %}
+
+	<script>
+	 roomid = {{ room.id|safe }};
+	 </script>
+<div><a href = "{% url 'chat:lobby' %}">ロビーに戻る</a></div>
+<script src="{% static 'chat/js/userlist.js' %}"></script>
+<script src="{% static 'chat/js/room.js' %}"></script>
+
+{% endblock %}

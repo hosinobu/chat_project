@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h1>アカウント作成</h1>
+<form method = "post">
+	{% csrf_token %}
+	{{ form.as_p }}
+	<button>作成！</button>
+</form>
+{% endblock %}

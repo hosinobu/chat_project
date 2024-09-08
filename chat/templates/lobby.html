@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load static %}
+{% block header %}
+<link rel="stylesheet" href = "{% static 'chat/css/lobby.css' %}">
+{% endblock %}
+{% block body %}
+
+    <h1>ロビーだよ</h1>
+    
+    {% include 'chat.html' %}
+    {% include 'userlist.html' %}
+
+
+    
+    <h2>部屋のリスト</h2>
+    <div id = "room-list"></div>
+    <button id="room-list-update">更新！</button>
+    <button id="make-room-submit">新規作成！</button>
+    <dialog id = "make-room-modal" >
+        <p>部屋名を入力してね！</p>
+        <form method="dialog">
+           
+            <input type="text" id = "room_name_input">
+            <button value = "make-room-submit">作成！</button><button value = "make-room-cancel">閉じる</button>
+        </form>
+    </dialog>
+
+    <script src="{% static 'chat/js/userlist.js' %}"></script>
+    <script src =  "{% static 'chat/js/lobby.js' %}"></script>
+
+{% endblock %}
