@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-	'django_static_md5url',
 	'channels',
 	'chat',
 	'accounts',
@@ -177,4 +176,4 @@ LOGGING = {
     },
 }
 
-ALLOWED_HOSTS = ['hosinobu.pythonanywhere.com']
+ALLOWED_HOSTS = ['127.0.0.1','localhost','hosinobu.pythonanywhere.com']
