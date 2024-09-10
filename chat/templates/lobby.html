@@ -10,8 +10,6 @@
     {% include 'chat.html' %}
     {% include 'userlist.html' %}
 
-
-    
     <h2>部屋のリスト</h2>
     <div id = "room-list"></div>
     <button id="room-list-update">更新！</button>
@@ -25,7 +23,7 @@
         </form>
     </dialog>
 
-    <script src="{% static 'chat/js/userlist.js' %}"></script>
-    <script src =  "{% static 'chat/js/lobby.js' %}"></script>
+    <script src= "{% static 'chat/js/userlist.js' %}"></script>
+    <script src = "{% static 'chat/js/lobby.js' %}"></script>
 
 {% endblock %}

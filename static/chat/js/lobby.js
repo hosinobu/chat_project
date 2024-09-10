@@ -2,7 +2,11 @@ const chatSocket = new WebSocket(
 	'ws://' + window.location.host.replace(':8000', ':8001') + '/ws/chat/lobby/'
 	);
 	
+	chatSocket.onopen = function(e){
+		document.querySelector('#room-list-update').onclick()
+	}
 	chatSocket.onmessage = function(e) {
+
 		const data = JSON.parse(e.data);
 		console.log(data.server_message_type);
 		switch(data.server_message_type){

@@ -1,4 +1,5 @@
-#chat-log{
-	height: 60px;
+#chat-log,#user-list,#room-list{
+	height: 200px;
 	overflow-y: scroll;
+	background-color: #888888;
 }

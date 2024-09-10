@@ -213,14 +213,12 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 name, content, stamp = await get_fields()
 
                 logging.debug(f"{name} {content} {stamp}")
-                logging.debug('DB')
+
                 await self.send_message_to_client('chat',
                     name = name,
                     content = content,
                     timestamp = stamp,
                 )
-
-            logging.debug('E')
 
         else:
             self.close()
