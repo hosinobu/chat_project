@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import dj_database_url
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,9 +26,6 @@ SECRET_KEY = 'django-insecure-$h3k&f4(t7tbfq@^8)2_@szdjam-nw2rpuq2+-=&7u@&fszsdu
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-ALLOWED_HOSTS = ['salty-spire-49136-77ce5e329cfd.herokuapp.com/', 'localhost', '127.0.0.1']
-
 
 # Application definition
 
@@ -80,7 +79,7 @@ WSGI_APPLICATION = 'chat_project.wsgi.application'
 import dj_database_url
 
 DATABASES = {
-    'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
+    'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
 }
 
 """
@@ -158,8 +157,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
@@ -185,20 +183,22 @@ LOGGING = {
     },
 }
 
-import dj_database_url
-import os
+
 #ALLOWED_HOSTS = ['127.0.0.1','localhost']
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
 if 'DATABASE_URL' in os.environ:
-    # Herokuの場合
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+else:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
+
+if 'DATABASE_URL' in os.environ:
     DATABASES = {
-        'default': dj_database_url.config(default=os.environ.get('postgres://uc5bhnd39o3fif:p0dfcc141c5b69ed602017791ed44c448915fc6d90d06cb29440dc5f26474e2f0@ccba8a0vn4fb2p.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/dc8920upoenb63'))
+        'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
     }
 else:
-    print('A')
-    # ローカルの場合
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
