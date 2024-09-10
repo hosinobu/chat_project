@@ -3,3 +3,4 @@ daphne
 channels
 redis
 django_static_md5url
+dj-database-url
