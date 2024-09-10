@@ -187,5 +187,18 @@ LOGGING = {
 
 ALLOWED_HOSTS = ['127.0.0.1','localhost']
 
-import django_heroku
-django_heroku.settings(locals())
+import dj_database_url
+import os
+if 'DATABASE_URL' in os.environ:
+    # Herokuの場合
+    DATABASES = {
+        'default': dj_database_url.config(default=os.environ.get('postgres://uc5bhnd39o3fif:p0dfcc141c5b69ed602017791ed44c448915fc6d90d06cb29440dc5f26474e2f0@ccba8a0vn4fb2p.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/dc8920upoenb63'))
+    }
+else:
+    # ローカルの場合
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
+    }
