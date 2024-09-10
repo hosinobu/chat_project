@@ -195,6 +195,7 @@ if 'DATABASE_URL' in os.environ:
         'default': dj_database_url.config(default=os.environ.get('postgres://uc5bhnd39o3fif:p0dfcc141c5b69ed602017791ed44c448915fc6d90d06cb29440dc5f26474e2f0@ccba8a0vn4fb2p.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/dc8920upoenb63'))
     }
 else:
+    print('A')
     # ローカルの場合
     DATABASES = {
         'default': {
