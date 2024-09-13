@@ -4,7 +4,7 @@ from accounts.models import CustomUser
 
 
 class ChatRoom(models.Model):
-	name = models.CharField(max_length=255)
+	name = models.CharField(max_length=30, unique=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	users = models.ManyToManyField(CustomUser, blank=True)
 
@@ -13,6 +13,7 @@ class ChatRoom(models.Model):
 
 class ChatMessage(models.Model):
 	content = models.TextField()
+	image = models.ImageField(upload_to='chat_images/', blank=True, null= True)
 	timestamp = models.DateTimeField(auto_now_add = True)
 	room = models.ForeignKey(ChatRoom, on_delete = models.CASCADE)
 	user = models.ForeignKey(CustomUser, on_delete = models.DO_NOTHING)

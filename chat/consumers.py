@@ -1,5 +1,6 @@
 import os
 import django
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chat_project.settings')
 django.setup()
 
@@ -8,15 +9,17 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import IntegrityError
 import asyncio
 import logging
+
+
 
 logger = logging.getLogger(__name__)
 
 lobby_room, created = ChatRoom.objects.get_or_create(name='__system_lobby')
 
 GLOBAL_LOBBY_ID = lobby_room.id
-
 
 
 class SendMethodMixin():
@@ -31,7 +34,7 @@ class SendMethodMixin():
 
     #グループに送信
     async def send_message_to_group(self, server_message_type, **kwargs):
-        logging.debug(f"sending messege for group ->  {kwargs}")
+        logger.info(f"sending messege for group ->  {kwargs}")
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -43,7 +46,7 @@ class SendMethodMixin():
 
     #クライアントに返信(送信)
     async def send_message_to_client(self, server_message_type, **kwargs):
-        logging.debug(f"sending message ->  {kwargs}")
+        logger.info(f"sending message ->  {kwargs}")
         await self.send_message({
             'server_message_type': server_message_type,
             **kwargs
@@ -61,9 +64,9 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
         if self.user.is_authenticated:
             
-            logging.debug(f"{self.user}がロビーに接続しました")
+            logger.info(f"{self.user}がロビーに接続しました")
 
-            logging.debug(type(self.room_id))
+            logger.info(type(self.room_id))
 
             result = await manage_user_in_chatroom(self,"add")
 
@@ -76,7 +79,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
             await self.accept()
 
-            logging.debug('befor_send_message_for_group')
+            logger.info('befor_send_message_for_group')
             await self.send_message_to_group(
                 'join',   
                 name = self.user.account_id, #入室者名
@@ -92,7 +95,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
         user_list = [i.account_id for i in result]
         
         if (close_code != 1000) & (close_code != 1001):
-            logging.debug(f"WebSocketが通常ではない切断が起きました-> CODE:{close_code}")
+            logger.info(f"WebSocketが通常ではない切断が起きました-> CODE:{close_code}")
 
         await self.send_message_to_group('leave',
             name     = self.user.account_id, #退室者名
@@ -109,7 +112,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
         text_data_json = json.loads(text_data)
         client_message_type = text_data_json['client_message_type']
 
-        logging.debug(f"lobby:{client_message_type}")
+        logger.info(f"lobby:{client_message_type}")
 
         match client_message_type:
 
@@ -121,9 +124,13 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 room_name = text_data_json['room_name']
                 @database_sync_to_async
                 def make_room():
-                    new_chatroom = ChatRoom.objects.create(name = room_name)
-                    new_chatroom.users.add(self.user)
-                    chatroom = ChatRoom.objects.exclude(id = GLOBAL_LOBBY_ID)
+                    try:
+                        new_chatroom = ChatRoom.objects.create(name = room_name)
+                        new_chatroom.users.add(self.user)
+                        chatroom = ChatRoom.objects.exclude(id = GLOBAL_LOBBY_ID)
+                    except IntegrityError:
+                        logger.info("部屋名がかぶってます")
+                        return list()
                     return list(chatroom)
                 room_list = { i.name : i.id for i in await make_room()}
                 await self.send_message_to_client(client_message_type)
@@ -137,7 +144,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                         chatroom = ChatRoom.objects.exclude(id = GLOBAL_LOBBY_ID)
                         return list(chatroom)
                     except ObjectDoesNotExist:
-                        logging.debug(f"ChatRoom with id {GLOBAL_LOBBY_ID} does not exist")
+                        logger.info(f"ChatRoom with id {GLOBAL_LOBBY_ID} does not exist")
                         return []
                 result = await get_chat_room_all()
                 room_list = { i.name : i.id for i in result}
@@ -151,7 +158,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                         chatroom = ChatRoom.objects.get(id=GLOBAL_LOBBY_ID)
                         return list(chatroom.users.all())
                     except ObjectDoesNotExist:
-                        logging.debug(f"ChatRoom with id {GLOBAL_LOBBY_ID} does not exist")
+                        logger.info(f"ChatRoom with id {GLOBAL_LOBBY_ID} does not exist")
                         return []
                 user_list_ids = [user.account_id for user in await get_user_list()]
                 await self.send_message_to_client(
@@ -160,11 +167,13 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 )
 
             case _:
-                logging.debug(f'unknown-message from client -> {client_message_type}')
+                logger.info(f'unknown-message from client -> {client_message_type}')
 
 
 
 class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
+
+    delete_room_task = {}
 
     async def connect(self):
 
@@ -175,10 +184,14 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
         if self.user.is_authenticated:
 
-            logging.debug(f"{self.user}がROOM{self.room_id}に接続しました")
+            logger.info(f"{self.user}がROOM{self.room_id}に接続しました")
+
+            #空部屋削除待ちタスクが走っていればキャンセル
+            if RoomConsumer.delete_room_task.get(self.room_id):
+                RoomConsumer.delete_room_task[self.room_id].cancel()
+                del RoomConsumer.delete_room_task[self.room_id]
 
             result = await manage_user_in_chatroom(self,"add")
-
             user_list = [i.account_id for i in result]
 
             await self.channel_layer.group_add(
@@ -186,20 +199,15 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 self.channel_name
             )
             await self.accept()
-
-            logging.debug('C')
-
             await self.send_message_to_group(
                 'join',   
                 name = self.user.account_id, #入室者名
                 user_list = user_list #現在の入室者リスト
             )
 
-            logging.debug('D')
-
             # 過去のメッセージを取得してクライアントに送信
             previous_messages = await get_previous_messages(self.room)
-            logging.debug('DA')
+
             for message in previous_messages:
                 
                 @database_sync_to_async
@@ -212,7 +220,7 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 
                 name, content, stamp = await get_fields()
 
-                logging.debug(f"{name} {content} {stamp}")
+                logger.info(f"{name} {content} {stamp}")
 
                 await self.send_message_to_client('chat',
                     name = name,
@@ -226,13 +234,15 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
     async def disconnect(self, close_code):
         if (close_code != 1000) & (close_code != 1001):
-            logging.debug(f"WebSocketが通常ではない切断が起きました-> CODE:{close_code}")
+            logger.info(f"WebSocketが通常ではない切断が起きました-> CODE:{close_code}")
 
         result = await manage_user_in_chatroom(self,'remove')
 
         if len(result) == 0:
             logger.info('befor_call_delete_room_after_timeout')
-            asyncio.create_task(delete_room_after_timeout(self.room_id, timeout=60))
+
+            RoomConsumer.delete_room_task[self.room_id] = asyncio.create_task(delete_room_after_timeout(self.room_id, timeout=60))
+                
             logger.info("after_call_delete_room_after_timeout")
 
         else:
@@ -253,7 +263,7 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
         client_message_type = text_data_json['client_message_type']
 
-        logging.debug(f"room:{client_message_type}")
+        logger.info(f"room:{client_message_type}")
 
         room_id = self.scope['url_route']['kwargs']['room_id']
 
@@ -275,7 +285,7 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                         chatroom = ChatRoom.objects.get(id=room_id)
                         return list(chatroom.users.all())
                     except ObjectDoesNotExist:
-                        logging.debug(f"ChatRoom with id {room_id} does not exist")
+                        logger.info(f"ChatRoom with id {room_id} does not exist")
                         return []
                 user_list_ids = [user.account_id for user in await get_user_list()]
                 await self.send_message_to_client(
@@ -283,7 +293,7 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                     userlist = user_list_ids
                 )
             case _:
-                logging.debug(f'unknown-message from client -> {client_message_type}')
+                logger.info(f'unknown-message from client -> {client_message_type}')
 
 #######################################################################################
 
@@ -310,22 +320,27 @@ async def manage_user_in_chatroom(self, action):
     
     return await modify_user_in_chatroom()
 
+
 async def delete_room_after_timeout(room_id, timeout=60):
-    logger.info(f"Starting timeout for room {room_id} with timeout={timeout} seconds")
-    await asyncio.sleep(timeout)
-    logger.info(f"Timeout complete, checking room {room_id}")
     try:
-        room = await database_sync_to_async(ChatRoom.objects.get)(id=room_id)
-        user_count = await database_sync_to_async(room.users.count)()
-        if user_count == 0:
-            await database_sync_to_async(room.delete)()
-            logger.info(f"Room {room_id} deleted.")
-        else:
-            logger.info(f"Room {room_id} still has users.")
-    except ChatRoom.DoesNotExist:
-        logger.info(f"Room {room_id} already deleted.")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.info(f"Starting timeout for room {room_id} with timeout={timeout} seconds")
+        await asyncio.sleep(timeout)
+        logger.info(f"Timeout complete, checking room {room_id}")
+        try:
+            room = await database_sync_to_async(ChatRoom.objects.get)(id=room_id)
+            user_count = await database_sync_to_async(room.users.count)()
+            if user_count == 0:
+                await database_sync_to_async(room.delete)()
+                logger.info(f"Room {room_id} deleted.")
+            else:
+                logger.info(f"Room {room_id} still has users.")
+        except ChatRoom.DoesNotExist:
+            logger.info(f"Room {room_id} already deleted.")
+        except Exception as e:
+            logger.error(f"An error occurred: {e}")
+        logger.info('task finished!!')
+    except asyncio.CancelledError:
+        logger.info('task cancelled!')
 
 
 @database_sync_to_async
