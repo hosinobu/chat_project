@@ -5,9 +5,4 @@ class ChatConfig(AppConfig):
     name = 'chat'
 
     def ready(self):
-
-        from django.db.models.signals import post_migrate
-        from .signals import create_lobby
-
-        post_migrate.connect(create_lobby, sender = self)
-
+        import chat.signals

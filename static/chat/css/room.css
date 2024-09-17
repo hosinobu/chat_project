@@ -1,0 +1,11 @@
+#chat-log,#user-list,#room-list{
+	width:100%;
+	overflow-y: scroll;
+	background-color: #888888;
+}
+
+button:disabled {
+    background-color: gray;  /* 無効状態のボタンの背景色を変更 */
+    cursor: not-allowed;     /* 無効状態のときにマウスポインタを変更 */
+    opacity: 0.5;            /* 無効状態のボタンの透明度を下げる */
+}

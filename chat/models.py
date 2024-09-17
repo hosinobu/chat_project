@@ -12,7 +12,7 @@ class ChatRoom(models.Model):
 		return f"部屋->{self.name}"
 
 class ChatMessage(models.Model):
-	content = models.TextField()
+	content = models.TextField(blank = True)
 	image = models.ImageField(upload_to='chat_images/', blank=True, null= True)
 	timestamp = models.DateTimeField(auto_now_add = True)
 	room = models.ForeignKey(ChatRoom, on_delete = models.CASCADE)

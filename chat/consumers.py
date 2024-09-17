@@ -12,15 +12,16 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 import asyncio
 import logging
+import html
+import time
 
 
 
 logger = logging.getLogger(__name__)
 
-lobby_room, created = ChatRoom.objects.get_or_create(name='__system_lobby')
 
-GLOBAL_LOBBY_ID = lobby_room.id
-
+GLOBAL_LOBBY, result = ChatRoom.objects.get_or_create(name='__system_lobby')
+GLOBAL_LOBBY_ID = GLOBAL_LOBBY.id
 
 class SendMethodMixin():
 
@@ -52,15 +53,14 @@ class SendMethodMixin():
             **kwargs
         })
 
-
-
 class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
     async def connect(self):
         self.user = self.scope["user"]
-        self.room_group_name = 'chat_lobby'
-        self.room_name = 'lobby'
+        self.room_group_name = str(GLOBAL_LOBBY_ID)
+        self.room_name = str(GLOBAL_LOBBY_ID)
         self.room_id = GLOBAL_LOBBY_ID
+        self.room = GLOBAL_LOBBY
 
         if self.user.is_authenticated:
             
@@ -79,6 +79,9 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
             await self.accept()
 
+            self.last_active_time = time.time()
+            self.check_timeout_task = asyncio.create_task(self.check_timeout())
+
             logger.info('befor_send_message_for_group')
             await self.send_message_to_group(
                 'join',   
@@ -90,6 +93,10 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
 
     async def disconnect(self, close_code):
+        
+        # タイムアウトチェックタスクをキャンセル
+        if hasattr(self, 'check_timeout_task'):
+            self.check_timeout_task.cancel()
         
         result = await manage_user_in_chatroom(self, "remove")
         user_list = [i.account_id for i in result]
@@ -109,14 +116,24 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
     async def receive(self, text_data):
 
+        self.last_active_time = time.time()
+
         text_data_json = json.loads(text_data)
         client_message_type = text_data_json['client_message_type']
 
         logger.info(f"lobby:{client_message_type}")
 
         match client_message_type:
-
+            case 'get_lobby_id':
+                logger.info(f"{client_message_type} -> {self.room_id}")
+                await self.send_message_to_client(client_message_type, result = self.room_id)
             case 'chat':
+
+                message = text_data_json['content']
+                sanitized_message = html.escape(message)
+
+                await save_message(self.room, self.user, sanitized_message)
+
                 text_data_json["name"] = self.user.account_id
                 await self.send_message_to_group(client_message_type, **text_data_json)
 
@@ -127,7 +144,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                     try:
                         new_chatroom = ChatRoom.objects.create(name = room_name)
                         new_chatroom.users.add(self.user)
-                        chatroom = ChatRoom.objects.exclude(id = GLOBAL_LOBBY_ID)
+                        chatroom = ChatRoom.objects.exclude(id = self.room_id)
                     except IntegrityError:
                         logger.info("部屋名がかぶってます")
                         return list()
@@ -141,10 +158,10 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 @database_sync_to_async
                 def get_chat_room_all():
                     try:
-                        chatroom = ChatRoom.objects.exclude(id = GLOBAL_LOBBY_ID)
+                        chatroom = ChatRoom.objects.exclude(id = self.room_id)
                         return list(chatroom)
                     except ObjectDoesNotExist:
-                        logger.info(f"ChatRoom with id {GLOBAL_LOBBY_ID} does not exist")
+                        logger.info(f"ChatRoom with id {self.room_id} does not exist")
                         return []
                 result = await get_chat_room_all()
                 room_list = { i.name : i.id for i in result}
@@ -155,10 +172,10 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 @database_sync_to_async
                 def get_user_list():
                     try:
-                        chatroom = ChatRoom.objects.get(id=GLOBAL_LOBBY_ID)
+                        chatroom = ChatRoom.objects.get(id = self.room_id)
                         return list(chatroom.users.all())
                     except ObjectDoesNotExist:
-                        logger.info(f"ChatRoom with id {GLOBAL_LOBBY_ID} does not exist")
+                        logger.info(f"ChatRoom with id {self.room_id} does not exist")
                         return []
                 user_list_ids = [user.account_id for user in await get_user_list()]
                 await self.send_message_to_client(
@@ -168,6 +185,13 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
             case _:
                 logger.info(f'unknown-message from client -> {client_message_type}')
+        
+    async def check_timeout(self, wait_minute = 5, loop_wait = 20):
+        waittime = loop_wait if loop_wait >= 1 else 1
+        end_time = wait_minute * 60
+        while time.time() < self.last_active_time + end_time:
+            await asyncio.sleep(waittime)
+        await self.close()
 
 
 
@@ -179,7 +203,7 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
         self.user = self.scope["user"]
         self.room_id = self.scope['url_route']['kwargs']['room_id']
-        self.room_group_name = 'Room' + self.room_id
+        self.room_group_name = self.room_id
         self.room_name = self.room_id
 
         if self.user.is_authenticated:
@@ -215,17 +239,19 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                     return (
                         message.user.account_id,
                         message.content,
-                        str(message.timestamp)
+                        str(message.timestamp),
+                        message.image.url if message.image else ""
                     )
                 
-                name, content, stamp = await get_fields()
+                name, content, stamp ,img = await get_fields()
 
-                logger.info(f"{name} {content} {stamp}")
+                logger.info(f"{name} {content} {stamp} {img}")
 
                 await self.send_message_to_client('chat',
                     name = name,
                     content = content,
                     timestamp = stamp,
+                    image_url = img
                 )
 
         else:
@@ -241,7 +267,7 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
         if len(result) == 0:
             logger.info('befor_call_delete_room_after_timeout')
 
-            RoomConsumer.delete_room_task[self.room_id] = asyncio.create_task(delete_room_after_timeout(self.room_id, timeout=60))
+            RoomConsumer.delete_room_task[self.room_id] = asyncio.create_task(delete_room_after_timeout(self.room_id))
                 
             logger.info("after_call_delete_room_after_timeout")
 
@@ -272,7 +298,8 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
             case 'chat':
 
                 message = text_data_json['content']
-                await save_message(self.room, self.user, message)
+                sanitized_message = html.escape(message)
+                await save_message(self.room, self.user, sanitized_message)
 
                 text_data_json["name"] = self.user.account_id
                 await self.send_message_to_group(client_message_type, **text_data_json)
@@ -338,9 +365,9 @@ async def delete_room_after_timeout(room_id, timeout=60):
             logger.info(f"Room {room_id} already deleted.")
         except Exception as e:
             logger.error(f"An error occurred: {e}")
-        logger.info('task finished!!')
+        logger.info('delete_room_task finished.')
     except asyncio.CancelledError:
-        logger.info('task cancelled!')
+        logger.info('delete_room_task cancelled!')
 
 
 @database_sync_to_async

@@ -1,23 +1,41 @@
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views import View
 from . import models
 import logging
+from asgiref.sync import sync_to_async
+from .utils import handle_chat_message
 
 logger = logging.getLogger(__name__)
 
-def my_view(request):
-	logger.info("このメッセージは情報レベルのログです")
-	return HttpResponse("ログが記録されました。")
-# Create your views here.
 
 class LobbyView(View):
-	def get(self,request):
-		return render(request, "lobby.html")
+	async def get(self,request):
+		return await sync_to_async(render)(request, "lobby.html")
+	
+	async def post(self, request, roomid):
+		print('lobby_post')
+		if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+			result = await handle_chat_message(request, roomid)
+			return JsonResponse(result)
+		return JsonResponse({'success':False, 'errors': 'Unexpected request'})
+
 lobby_view = LobbyView.as_view()
 
+
+
 class RoomView(View):
-	def get(self,request, roomid):
-		room = get_object_or_404(models.ChatRoom, id = roomid)
-		return render(request, "room.html", {"room":room})
+
+	async def get(self,request, roomid):
+		room = await sync_to_async(get_object_or_404)(models.ChatRoom, id = roomid)
+		return await sync_to_async(render)(request, "room.html", {"room":room})
+	
+	async def post(self, request, roomid):
+		print('F')
+		if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+			print('FF')
+			result = await handle_chat_message(request, roomid)
+			return JsonResponse(result)
+		return JsonResponse({'success':False, 'errors': 'Unexpected request'})
+		
 room_view = RoomView.as_view()

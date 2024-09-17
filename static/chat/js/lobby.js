@@ -3,7 +3,9 @@ const chatSocket = new WebSocket(
 	);
 	
 	chatSocket.onopen = function(e){
-		document.querySelector('#room-list-update').onclick()
+		chatSocket.send(JSON.stringify({
+			'client_message_type': 'get_lobby_id'
+		}));
 	}
 	chatSocket.onmessage = function(e) {
 
@@ -14,9 +16,14 @@ const chatSocket = new WebSocket(
 				document.querySelector('#chat-log').innerHTML += (data.name + ' さんが入室しました<br>');
 				user_list_update_socket(chatSocket)
 			break;
+			case 'get_lobby_id':
+				roomid = data.result
+				console.log(`ロビーのroomidを取得しました -> ${roomid}`)
+			break;
 			case 'chat':
+				console.log("chat-lobby.js" + data.content)
 				let element = document.querySelector('#chat-log');
-				element.innerHTML += (data.name + ' -> ' + data.content + '<br>');
+				chat_add(element,data.name + ' -> ' + data.content,"div",data.image_url)
 				element.scrollTop = element.scrollHeight - element.clientHeight;
 			break;
 			case 'make_room':

@@ -10,3 +10,4 @@ class ChatRoomAdmin(admin.ModelAdmin):
     display_users.short_description = 'Users'  # 表示名を変更
 
 admin.site.register(models.ChatRoom, ChatRoomAdmin)
+admin.site.register(models.ChatMessage)
