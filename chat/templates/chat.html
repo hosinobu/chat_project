@@ -1,12 +1,10 @@
 <div id="chat-log"></div>
-
-	<form id="chat-form" enctype="multipart/form-data">
+	<form id="chat-form" action = "" enctype="multipart/form-data">
 		<input id="chat-message-input" type="text" size="50">
 		<button id="emoji-button" type = "button">😊</button>
 		<input type='file' id="image-input" accept="image/*">
-		<button id="chat-message-submit" type = "submit" form="chat-form">Send</button>
 	</form>
+	<button id="chat-message-submit" type="button">Send</button>
 
 
-{% load static %}
-<script src="{% static 'chat/js/chat.js' %}"></script>
+

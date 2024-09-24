@@ -1,9 +1,16 @@
 {% extends "base.html" %}
-{% load static %}
+
+
 {% block header %}
-<link rel="stylesheet" href = "{% static 'chat/css/lobby.css' %}">
-<meta name="csrf-token" content = "{{csrf_token}}">
+    <meta name="csrf-token" content = "{{csrf_token}}">
+    {% load static %}
+    <link rel="stylesheet" href = "{% static 'chat/css/lobby.css' %}">
+    <script src="{% static 'chat/js/chat.js' %}" defer></script>
+    <script src= "{% static 'chat/js/userlist.js' %}" defer></script>
+    <script src = "{% static 'chat/js/lobby.js' %}" defer></script>
 {% endblock %}
+
+
 {% block body %}
 
     <h1>ロビーだよ</h1>
@@ -24,7 +31,6 @@
         </form>
     </dialog>
 
-    <script src= "{% static 'chat/js/userlist.js' %}"></script>
-    <script src = "{% static 'chat/js/lobby.js' %}"></script>
+
 
 {% endblock %}

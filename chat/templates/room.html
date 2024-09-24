@@ -1,22 +1,32 @@
 {% extends "base.html" %}
-{% load static %}
+
 {% block header %}
-<meta name="csrf-token" content = "{{csrf_token}}">
-<link rel="stylesheet" href = "{% static 'chat/css/room.css' %}">
-{% endblock %}
+	<meta name="csrf-token" content = "{{csrf_token}}">
+
+	{% load static %}
+		<link rel="stylesheet" href = "{% static 'chat/css/room.css' %}">
+		<script src="{% static 'chat/js/chat.js' %}" defer></script>
+		<script src="{% static 'chat/js/userlist.js' %}" defer></script>
+		<script src="{% static 'chat/js/room.js' %}" defer></script>
+		<script src="{% static 'chat/js/goban/functions.js' %}" defer></script>
+		<script src="{% static 'chat/js/goban/goban.js' %}" defer></script>
+		<script src="{% static 'chat/js/goban/main.js' %}" defer></script>
+	{% endblock %}
+
+
 {% block body %}
 
 	<h1>{{ room.id }}番部屋　{{room.name}}へようこそ</h1>
 
-
 	{% include 'chat.html' %}
 	{% include 'userlist.html' %}
 
-	<script>
-	 roomid = {{ room.id|safe }};
-	 </script>
-<div><a href = "{% url 'chat:lobby' %}">ロビーに戻る</a></div>
-<script src="{% static 'chat/js/userlist.js' %}"></script>
-<script src="{% static 'chat/js/room.js' %}"></script>
+	<div><a href = "{% url 'chat:lobby' %}">ロビーに戻る</a></div>
+	<div id = "position"></div>
+	<div id = "captures"></div>
+	<button type = "button" id = "makeboard">碁盤作成</button>
 
+	<script>
+		roomid = {{ room.id|safe }};
+	</script>
 {% endblock %}

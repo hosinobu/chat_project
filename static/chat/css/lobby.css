@@ -3,11 +3,3 @@
 	overflow-y: scroll;
 	background-color: #888888;
 }
-
-button:disabled {
-    background-color: #cccccc; /* 無効状態の背景色 */
-    color: #666666; /* 無効状態の文字色 */
-    cursor: not-allowed; /* カーソルを変更 */
-    opacity: 0.5; /* 不透明度を下げる */
-    border: 1px solid #999999; /* ボーダー色 */
-}

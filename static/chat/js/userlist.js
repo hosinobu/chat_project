@@ -1,3 +1,5 @@
+document.querySelector('#user-list-update').onclick = ()=>{user_list_update_socket(chatSocket)}
+
 function user_list_update_socket(socket){
 	if (socket){
 		socket.send(JSON.stringify({
@@ -7,7 +9,7 @@ function user_list_update_socket(socket){
 	}
 }
 
-document.querySelector('#user-list-update').onclick = user_list_update_socket()
+
 
 
 function user_list_update(d){

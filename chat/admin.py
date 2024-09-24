@@ -11,3 +11,4 @@ class ChatRoomAdmin(admin.ModelAdmin):
 
 admin.site.register(models.ChatRoom, ChatRoomAdmin)
 admin.site.register(models.ChatMessage)
+admin.site.register(models.GoBoard)
