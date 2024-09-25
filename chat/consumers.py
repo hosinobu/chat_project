@@ -59,6 +59,42 @@ class SendMethodMixin():
             **kwargs
         })
 
+
+    # 過去のメッセージを取得してクライアントに送信
+    async def send_previous_messages(self, room, message_limit = 50):
+        previous_messages = await get_previous_messages(room, message_limit)
+
+        for message in previous_messages:
+            
+            @database_sync_to_async
+            def get_fields():
+                img_url = ""
+                thumbnail_url = ""
+                if message.image:
+                    img_url = message.image.image.url
+                    if message.image.thumbnail:
+                        thumbnail_url = message.image.thumbnail.url
+                return (
+                    message.user.account_id,
+                    message.content,
+                    str(message.timestamp),
+                    img_url,
+                    thumbnail_url
+                )
+            
+            name, content, stamp ,img , thumbnail= await get_fields()
+
+            logger.info(f"{name} {content} {stamp} {img} {thumbnail}")
+
+            await self.send_message_to_client('chat',
+                name = name,
+                content = content,
+                timestamp = stamp,
+                image_url = img,
+                thumbnail_url = thumbnail
+            )
+
+
 class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
     users = set()
@@ -93,30 +129,9 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 name = self.user.account_id, #入室者名
                 user_list = user_list #現在の入室者リスト
             )
-                        # 過去のメッセージを取得してクライアントに送信
-            previous_messages = await get_previous_messages(self.room)
 
-            for message in previous_messages:
-                
-                @database_sync_to_async
-                def get_fields():
-                    return (
-                        message.user.account_id,
-                        message.content,
-                        str(message.timestamp),
-                        message.image.image.url if message.image else ""
-                    )
-                
-                name, content, stamp ,img = await get_fields()
+            await self.send_previous_messages(GLOBAL_LOBBY, 10)
 
-                logger.info(f"{name} {content} {stamp} {img}")
-
-                await self.send_message_to_client('chat',
-                    name = name,
-                    content = content,
-                    timestamp = stamp,
-                    image_url = img
-                )
         else:
             self.close()
 
@@ -229,7 +244,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
             await asyncio.sleep(waittime)
         await self.close()
 
-class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
+class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
 
     users = set()
     delete_room_task = {}
@@ -266,29 +281,7 @@ class RoomConsumer(AsyncWebsocketConsumer,SendMethodMixin):
             )
 
             # 過去のメッセージを取得してクライアントに送信
-            previous_messages = await get_previous_messages(self.room)
-
-            for message in previous_messages:
-                
-                @database_sync_to_async
-                def get_fields():
-                    return (
-                        message.user.account_id,
-                        message.content,
-                        str(message.timestamp),
-                        message.image.image.url if message.image else ""
-                    )
-                
-                name, content, stamp ,img = await get_fields()
-
-                logger.info(f"{name} {content} {stamp} {img}")
-
-                await self.send_message_to_client('chat',
-                    name = name,
-                    content = content,
-                    timestamp = stamp,
-                    image_url = img
-                )
+            await self.send_previous_messages(self.room, 100)
 
         else:
             self.close()
@@ -462,16 +455,5 @@ def save_message(room, user, content):
     ChatMessage.objects.create(room=room, user=user, content=content)
 
 @database_sync_to_async
-def get_previous_messages(room):
-    return list(ChatMessage.objects.filter(room=room).order_by('-timestamp')[:10][::1])
-
-
-class TestForIosConsumer(AsyncWebsocketConsumer):
-    async def receive(self, text_data):
-        try:
-            data = json.loads(text_data)
-            print(data)  # ログ出力（または logger.info に変更）
-        except json.JSONDecodeError as e:
-            print(f"JSON decode error: {e}")  # JSON解析エラーを記録
-        except Exception as e:
-            print(f"Error in receive: {e}")  # その他のエラーを記録
+def get_previous_messages(room, message_limit):
+    return list(ChatMessage.objects.filter(room=room).order_by('-timestamp')[:message_limit][::-1])

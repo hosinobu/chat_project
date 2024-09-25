@@ -17,6 +17,7 @@ chatSocket.onmessage = function(e) {
 		break;
 		case 'chat':
 			let element = document.querySelector('#chat-log');
+			console.log("A::" + data.image_url + "B::" + data.thumbnail_url)
 			chat_add(element,data.name + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
 			element.scrollTop = element.scrollHeight - element.clientHeight;
 		break;

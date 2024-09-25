@@ -47,13 +47,14 @@ class ChatImage(models.Model):
                 img.save(thumb_io, format=thumb_extension[1:].upper())
 
             thumb_file = default_storage.save(thumb_path, ContentFile(thumb_io.getvalue()))
-            self.thumbnail = thumb_file
+            self.thumbnail = thumb_file #ここの変更がデータベースに保存されていない
+            self.save(update_fields=['thumbnail'])
 
 class ChatMessage(models.Model):
 	content = models.TextField(blank = True)
 	image = models.ForeignKey(ChatImage, on_delete = models.SET_NULL, blank=True, null= True)
 	timestamp = models.DateTimeField(auto_now_add = True)
-	room = models.ForeignKey(ChatRoom, on_delete = models.CASCADE)
+	room = models.ForeignKey(ChatRoom, on_delete = models.CASCADE, related_name='chats')
 	user = models.ForeignKey(CustomUser, on_delete = models.DO_NOTHING)
 
 	def __str__(self):
