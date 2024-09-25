@@ -10,6 +10,8 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
+from django.utils import timezone
+from datetime import timedelta
 import asyncio
 import logging
 import html
@@ -61,8 +63,8 @@ class SendMethodMixin():
 
 
     # 過去のメッセージを取得してクライアントに送信
-    async def send_previous_messages(self, room, message_limit = 50):
-        previous_messages = await get_previous_messages(room, message_limit)
+    async def send_previous_messages(self, room, message_limit = 50, time = None):
+        previous_messages = await get_previous_messages(room, message_limit, time)
 
         for message in previous_messages:
             
@@ -130,7 +132,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 user_list = user_list #現在の入室者リスト
             )
 
-            await self.send_previous_messages(GLOBAL_LOBBY, 10)
+            await self.send_previous_messages(GLOBAL_LOBBY, 50, 10)#最大５０件、１０分以内のメッセージを取得
 
         else:
             self.close()
@@ -455,5 +457,8 @@ def save_message(room, user, content):
     ChatMessage.objects.create(room=room, user=user, content=content)
 
 @database_sync_to_async
-def get_previous_messages(room, message_limit):
-    return list(ChatMessage.objects.filter(room=room).order_by('-timestamp')[:message_limit][::-1])
+def get_previous_messages(room, message_limit = 50, time = None):
+    result = ChatMessage.objects.filter(room=room)
+    if time:
+        result = result.filter(timestamp__gte = timezone.now()-timedelta(minutes=time))
+    return list(result.order_by('-timestamp')[:message_limit][::-1])

@@ -4,6 +4,7 @@ from django.db.models.signals import post_save, post_delete
 from .models import ChatMessage, ChatRoom, ChatImage
 import os
 import threading
+
 @receiver(post_save, sender=ChatMessage)
 def my_model_post_save(sender, instance, created, **kwargs):
     if created:

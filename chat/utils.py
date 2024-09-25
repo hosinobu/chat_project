@@ -1,8 +1,10 @@
-#utls.py
+#utils.py
 from channels.layers import get_channel_layer
 from .forms import ChatMessageForm
 from .models import ChatRoom
 from .models import ChatImage
+import os
+from django.conf import settings
 from channels.db import database_sync_to_async
 
 async def handle_chat_message(request, roomid):
@@ -57,3 +59,34 @@ async def handle_chat_message(request, roomid):
         
         return {'success': True}
     return {'success': False, 'errors': form.errors}
+
+
+def cleanup_unused_files():
+    # データベースに関連付けられている画像とサムネイルのパスを取得
+    db_image_paths = ChatImage.objects.values_list('image', flat=True)
+    db_thumbnail_paths = ChatImage.objects.values_list('thumbnail', flat=True)
+
+    # ファイルシステム上の画像とサムネイルのパスを取得
+    image_dir = os.path.join(settings.MEDIA_ROOT, 'chat_images/') 
+    all_image_files = [os.path.join(image_dir, f) for f in os.listdir(image_dir)]
+
+    # 1. 関連付けられていない画像ファイルを削除
+    for file_path in all_image_files:
+        if file_path not in db_image_paths and os.path.isfile(file_path):
+            try:
+                os.remove(file_path)
+                print(f"{file_path} を削除しました。")
+            except Exception as e:
+                print(f"ファイル削除に失敗しました: {e}")
+
+    # 2. サムネイルも同様に
+    thumbnail_dir = os.path.join(settings.MEDIA_ROOT, 'chat_thumbnails/')
+    all_thumbnail_files = [os.path.join(thumbnail_dir, f) for f in os.listdir(thumbnail_dir)]
+
+    for file_path in all_thumbnail_files:
+        if file_path not in db_thumbnail_paths and os.path.isfile(file_path):
+            try:
+                os.remove(file_path)
+                print(f"{file_path} を削除しました。")
+            except Exception as e:
+                print(f"ファイル削除に失敗しました: {e}")
