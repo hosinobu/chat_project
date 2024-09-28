@@ -1,5 +1,5 @@
 
-ctx = CreateCanvas(document.body,640,480)
+ctx = CreateCanvas(document.getElementById('board-main'),640,480)
 
 goban_board = null
 
@@ -8,10 +8,6 @@ let lastTime = -1;
 let deltaTime = -1;
 
 captureboard = document.getElementById("captures")
-
-function make_go_board(){
-	chatSocket.send("make_go_board", x = 9, y= 9)
-}
 
 function gameLoop(timestamp){
 

@@ -16,6 +16,7 @@ import asyncio
 import logging
 import html
 import time
+from django.urls import reverse
 
 
 """ この行をコメントアウトすれば、ロガーリストが見れます
@@ -36,6 +37,7 @@ class SendMethodMixin():
     #全てのメッセージは最終的にこの関数からクライアントに送られる
     async def send_message(self, event):
         server_message_type = event['server_message_type']
+        print(server_message_type)
         await self.send(text_data=json.dumps({
             'server_message_type': server_message_type,
             **event
@@ -171,7 +173,9 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
         logger.info(f"lobby:{client_message_type}")
 
         match client_message_type:
+
             case 'get_lobby_id':
+
                 logger.info(f"{client_message_type} -> {GLOBAL_LOBBY_ID}")
                 await self.send_message_to_client(client_message_type, result = GLOBAL_LOBBY_ID)
                 
@@ -179,14 +183,12 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
                 message = text_data_json['content']
                 sanitized_message = html.escape(message)
-
                 await save_message(GLOBAL_LOBBY, self.user, sanitized_message)
-
                 text_data_json["name"] = self.user.account_id
-                logger.info(text_data_json)
                 await self.send_message_to_group(client_message_type, **text_data_json)
 
             case 'make_room':
+
                 room_name = text_data_json['room_name']
                 @database_sync_to_async
                 def make_room():
@@ -209,21 +211,19 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
             case 'user-list-update':
 
-                @database_sync_to_async
-                def get_user_list():
-                    try:
-                        chatroom = ChatRoom.objects.get(id = GLOBAL_LOBBY_ID)
-                        return list(chatroom.users.all())
-                    except ObjectDoesNotExist:
-                        logger.info(f"ChatRoom with id {GLOBAL_LOBBY_ID} does not exist")
-                        return []
-                user_list_ids = [user.account_id for user in await get_user_list()]
-                await self.send_message_to_client(
-                    'user-list-update',
-                    userlist = user_list_ids
+                await user_list_update(self, GLOBAL_LOBBY_ID, client_message_type)
+
+            case 'get-user-page':
+
+                url = reverse("user_profile:user_top",
+                        args = [text_data_json['userid']]
+                    )
+                await self.send_message_to_client(client_message_type,
+                    url = url
                 )
 
             case _:
+
                 logger.info(f'unknown-message from client -> {client_message_type}')
 
     async def room_list_update(self, message_type):
@@ -290,17 +290,15 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
 
 
     async def disconnect(self, close_code):
+        print('DISCONNECT!!!!')
         if (close_code != 1000) & (close_code != 1001):
             logger.info(f"WebSocketが通常ではない切断が起きました-> CODE:{close_code}")
 
         result = await manage_user_in_chatroom(self, self.room_id,'remove')
 
         if len(result) == 0:
-            logger.info('befor_call_delete_room_after_timeout')
 
             RoomConsumer.delete_room_task[self.room_id] = asyncio.create_task(delete_room_after_timeout(self.room_id))
-                
-            logger.info("after_call_delete_room_after_timeout")
 
         else:
 
@@ -331,24 +329,18 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
                 message = text_data_json['content']
                 sanitized_message = html.escape(message)
                 await save_message(self.room, self.user, sanitized_message)
-
                 text_data_json["name"] = self.user.account_id
                 await self.send_message_to_group(client_message_type, **text_data_json)
 
             case 'user-list-update':
+                await user_list_update(self, room_id, client_message_type)
 
-                @database_sync_to_async
-                def get_user_list():
-                    try:
-                        chatroom = ChatRoom.objects.get(id=room_id)
-                        return list(chatroom.users.all())
-                    except ObjectDoesNotExist:
-                        logger.info(f"ChatRoom with id {room_id} does not exist")
-                        return []
-                user_list_ids = [user.account_id for user in await get_user_list()]
-                await self.send_message_to_client(
-                    'user-list-update',
-                    userlist = user_list_ids
+            case 'get-user-page':
+                url = reverse("user_profile:user_top",
+                        args = [text_data_json['userid']]
+                    )
+                await self.send_message_to_client(client_message_type,
+                    url = url
                 )
 
             case 'make_go_board':
@@ -388,7 +380,9 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
                             "turn": board.turn, 
                             "koY": board.koY,
                             "koX": board.koX,
-                            "koTurn": board.koTurn
+                            "koTurn": board.koTurn,
+                            "black_capture": board.black_capture_count,
+                            "white_capture": board.white_capture_count
                         }
                     return False,[]
                 
@@ -451,6 +445,24 @@ async def delete_room_after_timeout(room_id, timeout=60):
         logger.info('delete_room_task finished.')
     except asyncio.CancelledError:
         logger.info('delete_room_task cancelled!')
+
+async def user_list_update(socket, room_id, message_type):
+    print("user_list_update() called.")
+    @database_sync_to_async
+    def get_user_list():
+        try:
+            chatroom = ChatRoom.objects.get(id = room_id)
+            return list(chatroom.users.all())
+        except ObjectDoesNotExist:
+            logger.info(f"ChatRoom with id {room_id} does not exist")
+            return []
+    user_list_ids = [[user.account_id, user.id] for user in await get_user_list()]
+    print(user_list_ids)
+    await socket.send_message_to_client(
+        message_type,
+        userlist = user_list_ids
+    )
+
 
 @database_sync_to_async
 def save_message(room, user, content):

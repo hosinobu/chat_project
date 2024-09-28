@@ -57,6 +57,10 @@ const chatSocket = new WebSocket(
 			case 'user-list-update':
 				user_list_update(data);
 			break
+			case 'get-user-page':
+				console.log('開けゴマ')
+				window.open(data.url);
+			break
 			case 'leave':
 				document.querySelector('#chat-log').innerHTML += (data.name + ' さんが退室しました<br>');
 				user_list_update_socket(chatSocket);
@@ -76,7 +80,7 @@ const chatSocket = new WebSocket(
 	};
 
 
-	let dialog = document.querySelector('#make-room-modal')
+	const dialog = document.querySelector('#make-room-modal')
 	dialog.addEventListener('close', () => {
 		switch(dialog.returnValue){
 			case 'make-room-submit':

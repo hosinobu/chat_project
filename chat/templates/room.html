@@ -5,6 +5,7 @@
 
 	{% load static %}
 		<link rel="stylesheet" href = "{% static 'chat/css/room.css' %}">
+		<script> const roomid = parseInt("{{ room.id }}"); </script>
 		<script src="{% static 'chat/js/chat.js' %}" defer></script>
 		<script src="{% static 'chat/js/userlist.js' %}" defer></script>
 		<script src="{% static 'chat/js/room.js' %}" defer></script>
@@ -16,17 +17,31 @@
 
 {% block body %}
 
-	<h1>{{ room.id }}番部屋　{{room.name}}へようこそ</h1>
 
-	{% include 'chat.html' %}
-	{% include 'userlist.html' %}
+	<h1>{{ room.id }}番部屋　{{user.account_id}}->{{room.name}}</h1>
+
+	<div class = "flexbox">
+		<div>
+			{% include 'chat.html' %}
+			{% include 'userlist.html' %}
+		</div>
+
+		<div id = "board-main">
+			<div id = "position"></div>
+			<div id = "captures"></div>
+			<button type = "button" id = "makeboard">碁盤作成</button>
+			<dialog id = "make-board-modal">
+				<p>碁盤のサイズを決めてね</p>
+				<form method = "dialog" id = "make-board-form">
+					<label for = "input-boardx">横</label><input type="number" id="input-boardx" min="1" max="19" value = "13">
+					<label for = "input-boardy">縦</label><input type="number" id="input-boardy" min="1" max="19" value = "13">
+					<button value = "make-board-submit" form = "make-board-form">作成！</button>
+					<button value = "make-board-cancel">閉じる</button>
+				</form>
+			</dialog>
+		</div>
+	</div>
 
 	<div><a href = "{% url 'chat:lobby' %}">ロビーに戻る</a></div>
-	<div id = "position"></div>
-	<div id = "captures"></div>
-	<button type = "button" id = "makeboard">碁盤作成</button>
 
-	<script>
-		roomid = {{ room.id|safe }};
-	</script>
 {% endblock %}

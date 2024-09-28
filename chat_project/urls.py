@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls         ),
 	path(''      , include("accounts.urls")),
 	path('chat/'  , include("chat.urls")    ),
+    path('user_profile/', include("user_profile.urls"))
 ]
 # 開発環境でメディアファイルを提供する設定
 if settings.DEBUG:

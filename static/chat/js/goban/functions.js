@@ -30,9 +30,5 @@ function CreateCanvas(element,width, height){
 
 document.getElementById("makeboard").addEventListener('click', function(event){
 	if (goban_board)return;
-	chatSocket.send(JSON.stringify({
-		'client_message_type': "make_go_board",
-		'x': 9,
-		'y': 9
-	}));
+	document.getElementById('make-board-modal').showModal();
 });

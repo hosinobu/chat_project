@@ -2,4 +2,23 @@
 	height: 200px;
 	overflow-y: scroll;
 	background-color: #888888;
+	width:200px;
 }
+
+.flexbox > div{
+	background: skyblue;
+	margin: 10px;
+  }
+  
+  .flexbox{
+	display:flex;
+  }
+.link-userlist{
+	display:block
+}
+
+  @media (max-width: 600px) {
+	.flexbox {
+	  flex-direction: column; /* 縦並びに変更 */
+	}
+  }

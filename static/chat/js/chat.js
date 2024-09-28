@@ -1,5 +1,3 @@
-//<-- chat.jsの先頭です --!>
-
 document.getElementById('chat-message-submit').onclick = ()=>{
     sendMessage()
 }

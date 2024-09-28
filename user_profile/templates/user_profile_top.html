@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block header %}
+{% endblock %}
+{% block body %}
+<h1>{{ user.account_id }}</h1>
+<h2>
+{% if is_owner %}
+	あなたのぺーじ
+{% else %}
+	他のユーザのページ
+{%endif%}
+</h2>
+まだ何もない（未実装）
+
+{% endblock %}

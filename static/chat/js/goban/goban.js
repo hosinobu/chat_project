@@ -243,7 +243,7 @@ class Goban {
         this.ctx.stroke();
     }
 
-	drawEllipse(x, y, radiusY, radiusX) {
+	drawEllipse(x, y, radiusX, radiusY) {
 		this.ctx.beginPath();
 		this.ctx.ellipse(x, y, radiusX, radiusY, 0, 0, 2*Math.PI)
 		this.ctx.fill();
