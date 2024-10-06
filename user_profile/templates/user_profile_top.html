@@ -2,14 +2,11 @@
 {% block header %}
 {% endblock %}
 {% block body %}
-<h1>{{ user.account_id }}</h1>
-<h2>
+	<h1>{{ user.account_id }}さんのプロフィール</h1>
+	<div>{{ user.profile }}</div>
 {% if is_owner %}
-	あなたのぺーじ
-{% else %}
-	他のユーザのページ
-{%endif%}
-</h2>
-まだ何もない（未実装）
+	<hr>
+	<a href = "{% url 'user_profile:user_edit' user.id %}">編集</a>
+{% endif %}
 
 {% endblock %}

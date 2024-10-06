@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block header %}
+{% endblock %}
+{% block body %}
+<h1>{{ user.account_id }}</h1>
+<h2>
+</h2>
+{% if is_owner %}
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}  <!-- フォームのフィールドをパラグラフとして表示 -->
+    <button type="submit">保存</button>
+</form>
+{% else %}
+    <p>このプロフィールは編集できません。</p>
+{% endif %}
+
+
+{% endblock %}
