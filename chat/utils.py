@@ -9,11 +9,11 @@ from channels.db import database_sync_to_async
 
 async def handle_chat_message(request, roomid):
 
-    #フォームを取得 POST と　FILES を取得すれば、全部受け取れてるよ。
+    #フォームを取得 POST と　FILES を取得すれば、全部受け取れてる。
     form = ChatMessageForm(request.POST, request.FILES)
-    #これでformは　forms.pyで宣言している ChatMessageForm型になってるよ
+    #これでformは　forms.pyで宣言している ChatMessageForm型になってる
     #forms.pyのなかでmodelにchatMessageを指定しているから
-    #仮に今form.save()すると、受け取った内容そのまんまで、chatMessageクラスのオブジェクトが生成されることになるね
+    #仮に今form.save()すると、受け取った内容そのまんまで、chatMessageクラスのオブジェクトが生成されることになる
     # （同時にデータベースに保存される
     
     if form.is_valid():
@@ -27,12 +27,11 @@ async def handle_chat_message(request, roomid):
             chatroom = ChatRoom.objects.get(id=roomid)
             chat_message.room = chatroom
             chat_message.user = request.user
-            #編集完了
 
+            #編集完了
             chat_message.save()
 
             #結果を返す
-
             t_url = chat_image.thumbnail.url if chat_image.thumbnail else ""
             i_url = chat_image.image.url if chat_image.image else ""
             return (

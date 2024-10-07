@@ -1,9 +1,10 @@
 from django import forms
-from accounts.models import CustomUser
+from .models import Profile
 
 class ProfileEditForm(forms.ModelForm):
 	class Meta:
-		model = CustomUser
+		model = Profile
 		fields = [
-			'profile',
+			'bio',
+			'avatar'
 		]

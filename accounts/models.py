@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser,BaseUserManager,PermissionsMixin
 
+
 class CustomUserManager(BaseUserManager):
     def _create_user(self, account_id, password, **extra_fields):
         user = self.model(account_id=account_id, **extra_fields)
@@ -37,7 +38,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 	is_active = models.BooleanField(default = True)
 	is_staff = models.BooleanField(default = False)
 	is_superuser = models.BooleanField(default = False)
-	profile = models.TextField(default = "よろしくお願いします")
 
 	objects = CustomUserManager()
 	USERNAME_FIELD = 'account_id'

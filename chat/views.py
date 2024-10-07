@@ -1,15 +1,26 @@
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
 from . import models
-import logging
 from asgiref.sync import sync_to_async
 from .utils import handle_chat_message
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
 
+import logging
 logger = logging.getLogger(__name__)
 
+from django.contrib.auth.mixins import AccessMixin
+class AsyncLoginRequiredMixin(AccessMixin):
+    """非同期対応のLoginRequiredMixin"""
 
-class LobbyView(View):
+    @method_decorator(login_required)
+    async def dispatch(self, *args, **kwargs):
+        return await super().dispatch(*args, **kwargs)
+
+
+class LobbyView(AsyncLoginRequiredMixin,View):
 	
 	async def get(self, request):
 		return await sync_to_async(render)(request, "lobby.html")
@@ -23,7 +34,7 @@ class LobbyView(View):
 
 
 
-class RoomView(View):
+class RoomView(AsyncLoginRequiredMixin,View):
 
 	async def get(self, request, roomid):
 		room = await sync_to_async(get_object_or_404)(models.ChatRoom, id = roomid)

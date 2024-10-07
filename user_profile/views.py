@@ -1,11 +1,12 @@
-from django.shortcuts import render, redirect
-from accounts.models import CustomUser
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import get_user_model
 from .forms import ProfileEditForm
-# Create your views here.
+from .models import Profile
+
 def topview(request, userid):
-	print("topviewが呼ばれたよ")
 	
-	user = CustomUser.objects.get(id = userid)
+	user = get_user_model().objects.get(id = userid)
+	profile, created = Profile.objects.get_or_create(user=user)
 	data = {
 		"user":user,
 		"is_owner": user == request.user
@@ -13,11 +14,14 @@ def topview(request, userid):
 	return render(request, "user_profile_top.html" ,data)
 
 def editview(request, userid):
+	
 	print(request.method)
-	user = CustomUser.objects.get(id = userid)
+	user = get_user_model().objects.get(id = userid)
+	profile, created = Profile.objects.get_or_create(user=user)
+
 	if request.method == 'POST':
 		print(request.POST)
-		form = ProfileEditForm(request.POST, instance = user)
+		form = ProfileEditForm(request.POST, request.FILES, instance = profile)
 		if form.is_valid():
 			form.save()
 			return redirect('user_profile:user_top', userid)
@@ -26,7 +30,7 @@ def editview(request, userid):
 			return redirect('user_profile:user_top', userid)
 	else:
 
-		form = ProfileEditForm(instance = user)
+		form = ProfileEditForm(instance = profile)
 		data = {
 			"user":user,
 			"is_owner": user == request.user,

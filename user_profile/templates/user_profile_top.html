@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 {% block header %}
+{% load static %}
 {% endblock %}
 {% block body %}
 	<h1>{{ user.account_id }}さんのプロフィール</h1>
-	<div>{{ user.profile }}</div>
+	<div>{{ user.profile.bio }}</div>
+	{% if user.profile.avatar %}
+	<img src = {{user.profile.avatar.url}}>
+	{% endif %}
 {% if is_owner %}
 	<hr>
 	<a href = "{% url 'user_profile:user_edit' user.id %}">編集</a>

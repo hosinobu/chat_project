@@ -1,4 +1,12 @@
 from django.contrib import admin
-from django.contrib.auth import get_user_model
-admin.site.register(get_user_model())
-# Register your models here.
+from .models import CustomUser
+from user_profile.models import Profile
+
+class ProfileInline(admin.StackedInline):
+    model = Profile
+    can_delete = False
+
+class CustomUserAdmin(admin.ModelAdmin):
+    inlines = (ProfileInline,)
+
+admin.site.register(CustomUser, CustomUserAdmin)
