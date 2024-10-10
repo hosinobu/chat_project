@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>右クリックの制御</title>
+  <style>
+    #customMenu {
+      display: none;
+      position: absolute;
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+<h1>右クリックでカスタムメニューを表示</h1>
+<div id="output">右クリックしてください</div>
+
+<!-- カスタムメニュー -->
+<div id="customMenu">
+  <p>カスタムメニュー</p>
+  <button onclick="alert('オプション1が選択されました')">オプション 1</button><br>
+  <button onclick="alert('オプション2が選択されました')">オプション 2</button>
+</div>
+
+<script>
+  const customMenu = document.getElementById('customMenu');
+
+  // 右クリックイベントをキャッチしてカスタムメニューを表示
+  document.addEventListener('contextmenu', function(event) {
+    event.preventDefault(); // ブラウザのデフォルトメニューを無効化
+
+    // カスタムメニューの位置をクリック位置に設定
+    customMenu.style.display = 'block';
+    customMenu.style.left = `${event.pageX}px`;
+    customMenu.style.top = `${event.pageY}px`;
+  });
+
+  // クリックしたらカスタムメニューを非表示に
+  document.addEventListener('click', function() {
+    customMenu.style.display = 'none';
+  });
+</script>
+
+</body>
+</html>

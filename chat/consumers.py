@@ -36,10 +36,9 @@ class SendMethodMixin():
 
     #全てのメッセージは最終的にこの関数からクライアントに送られる
     async def send_message(self, event):
-        server_message_type = event['server_message_type']
-        print(server_message_type)
+        logger.info(event['server_message_type'])
         await self.send(text_data=json.dumps({
-            'server_message_type': server_message_type,
+            'from': self.user.account_id,
             **event
         }))
 
@@ -102,6 +101,7 @@ class SendMethodMixin():
 class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 
     users = set()
+    serchsocket = {}
 
     async def connect(self):
         self.user = self.scope["user"]
@@ -111,7 +111,9 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
         if self.user.is_authenticated:
             
             LobbyConsumer.users.add(self)
-            logger.info(f"{self.user}がロビーに接続しました")
+            LobbyConsumer.serchsocket[self.user.account_id] = self
+            logger.info(f"{self.user.account_id}がロビーに接続しましたよ")
+
 
             result = await manage_user_in_chatroom(self,GLOBAL_LOBBY_ID,"add")
 
@@ -123,7 +125,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
             )
 
             await self.accept()
-
+            await self.send_message_to_client('your_account_id', account_id = self.user.account_id)
             self.last_active_time = time.time()
             self.check_timeout_task = asyncio.create_task(self.check_timeout())
 
@@ -162,6 +164,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
             self.channel_name
         )
         LobbyConsumer.users.remove(self)
+        LobbyConsumer.serchsocket.pop(self.user.account_id, None)
 
     async def receive(self, text_data):
 
@@ -249,11 +252,12 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
 class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
 
     users = set()
+    serchsocket = {}
     delete_room_task = {}
 
     async def connect(self):
 
-        RoomConsumer.users.add(self)
+
         self.user = self.scope["user"]
         self.room_id = self.scope['url_route']['kwargs']['room_id']
         self.room_group_name = self.room_id
@@ -262,6 +266,10 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
         if self.user.is_authenticated:
 
             logger.info(f"{self.user}がROOM{self.room_id}に接続しました")
+
+
+            RoomConsumer.users.add(self)
+            RoomConsumer.serchsocket[self.user.account_id] = self
 
             #空部屋削除待ちタスクが走っていればキャンセル
             if RoomConsumer.delete_room_task.get(self.room_id):
@@ -276,6 +284,8 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
                 self.channel_name
             )
             await self.accept()
+
+            await self.send_message_to_client('your_account_id', account_id = self.user.account_id)
             await self.send_message_to_group(
                 'join',   
                 name = self.user.account_id, #入室者名
@@ -312,13 +322,15 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
             self.room_group_name,
             self.channel_name
         )
+        RoomConsumer.users.remove(self)
+        RoomConsumer.serchsocket.pop(self.user.account_id, None)
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
 
         client_message_type = text_data_json['client_message_type']
 
-        logger.info(f"room:{client_message_type}")
+        logger.info(f"roomconsumer: {client_message_type}")
 
         room_id = self.scope['url_route']['kwargs']['room_id']
 
@@ -391,10 +403,40 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
                 if result:
                     await self.send_message_to_group(client_message_type, **board)
                     
+            case 'p2pOffer':
+                offer_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
+                if offer_socket:
+                    text_data_json['from'] = self.user.account_id
+                    await self.p2psend_message(offer_socket, 'p2pOffer', text_data_json)
+                else:
+                    self.log_socket_error(text_data_json['for'])
 
+            case 'p2pAnswer':
+                offer_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
+                if offer_socket:
+                    text_data_json['from'] = self.user.account_id
+                    await self.p2psend_message(offer_socket, 'p2pAnswer', text_data_json)
+                else:
+                    self.log_socket_error(text_data_json['for'])
 
-            case _:
-                logger.info(f'unknown-message from client -> {client_message_type}')
+            case 'p2pIceCandidate':
+                offer_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
+                if offer_socket:
+                    text_data_json['from'] = self.user.account_id
+                    await self.p2psend_message(offer_socket, 'p2pIceCandidate', text_data_json)
+                else:
+                    self.log_socket_error(text_data_json['for'])
+
+    async def p2psend_message(self, socket, message_type, text_data):
+        logger.info(f"sendp2p_message {message_type}")
+        await socket.send_message({
+            'server_message_type': message_type,
+            **text_data
+        })
+
+    def log_socket_error(self, account_id):
+        print(f"Error: Socket for account {account_id} not found.")
+        
 
 #######################################################################################
 

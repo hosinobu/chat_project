@@ -1,5 +1,5 @@
 const chatSocket = new WebSocket(
-	'ws://' + window.location.host.replace(':8000', ':8001') + '/ws/chat/lobby/'
+	'ws://' + window.location.host.replace(':8000', ':8001')+ '/ws/chat/lobby/'
 	);
 	
 	chatSocket.onopen = function(e){
@@ -46,7 +46,7 @@ const chatSocket = new WebSocket(
 				while(roomlist.firstChild){
 					roomlist.removeChild(roomlist.firstChild);
 				}
-				for(let[key,value] of Object.entries(data).slice(1,)){
+				for(let[key,value] of Object.entries(data).slice(2,)){ //２個スライスしてるのは一つ目は誰からのメッセージか、二つ目はサーバーのメッセージタイプが入ってるからよ。
 					let new_element = document.createElement('a');
 					new_element.href = window.location.origin + '/chat/' + value
 					new_element.textContent = "" + value + ":" + key;
@@ -59,7 +59,7 @@ const chatSocket = new WebSocket(
 			break
 			case 'get-user-page':
 				console.log('開けゴマ')
-				window.open(data.url);
+				window.location(data.url);
 			break
 			case 'leave':
 				document.querySelector('#chat-log').innerHTML += (data.name + ' さんが退室しました<br>');

@@ -150,10 +150,10 @@ CHANNEL_LAYERS = {
         },
     },
 }
+SESSION_CACHE_ALIAS = "default"
 
 
-
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
 LOGGING = {
@@ -184,3 +184,9 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesSto
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # mediaディレクトリのパスを設定
+
+CSRF_TRUSTED_ORIGINS = []
+
+
+#ALLOWED_ORIGINS = ["http://localhost:8001"]
+#CORS_ALLOWED_ORIGINS = ["http://localhost:8001"]

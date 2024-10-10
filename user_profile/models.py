@@ -4,8 +4,8 @@ from PIL import Image
 
 class Profile(models.Model):
     user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
-    bio = models.TextField(default="よろしくお願いします")
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    bio = models.TextField(default="よろしくお願いします", verbose_name="自己紹介")
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name="アバター")
     
     def __str__(self):
         return self.user.account_id
