@@ -1,20 +1,19 @@
-const EMPTY = 0;
-const BLACK = 1;
-const WHITE = 2;
-
-class Goban {
+export default class GoBoard{
     static DIRECTIONS_Y = [0, -1, 0, 1];
     static DIRECTIONS_X = [1, 0, -1, 0];
+    static EMPTY = 0;
+    static BLACK = 1;
+    static WHITE = 2;
 
-    constructor(ctx, id, sizex, sizey, y, x, px = 0, py = 0) {
+    constructor(ctx, id, sizex, sizey, y, x, py = 0, px = 0) {
         this.ctx = ctx;
         this.id = id;
         this.py = py; // キャンバス上の表示位置Y
         this.px = px; // キャンバス上の表示位置X
         this.changeBoardSize(sizex, sizey, y, x);
-        this.turn = BLACK;
+        this.turn = GoBoard.BLACK;
         this.onMouse = false;
-        this.board = Array.from({ length: this.y }, () => Array(this.x).fill(EMPTY));
+        this.board = Array.from({ length: this.y }, () => Array(this.x).fill(GoBoard.EMPTY));
         this.koTurn = -1;
         this.koY = -1;
         this.koX = -1;
@@ -40,7 +39,7 @@ class Goban {
     }
 
     getOpponentTurn(turn = this.turn) {
-        return (turn === BLACK) ? WHITE : BLACK;
+        return (turn === GoBoard.BLACK) ? WHITE : GoBoard.BLACK;
     }
 
     isInBounds(y, x) {
@@ -61,11 +60,11 @@ class Goban {
 
             // 4方向に探索
             for (let i = 0; i < 4; i++) {
-                const nexty = ny + Goban.DIRECTIONS_Y[i];
-                const nextx = nx + Goban.DIRECTIONS_X[i];
+                const nexty = ny + GoBoard.DIRECTIONS_Y[i];
+                const nextx = nx + GoBoard.DIRECTIONS_X[i];
 
                 if (this.isInBounds(nexty, nextx) && !visited[nexty][nextx]) {
-                    if (this.board[nexty][nextx] === EMPTY) {
+                    if (this.board[nexty][nextx] === GoBoard.EMPTY) {
                         return []; // 空のマスがあれば囲まれていない
                     }
                     if (this.board[nexty][nextx] === turn) {
@@ -79,7 +78,7 @@ class Goban {
     }
 
     checkKakomi(y, x, turn) {
-        if (this.board[y][x] != EMPTY) return [];
+        if (this.board[y][x] != GoBoard.EMPTY) return [];
 
         this.board[y][x] = turn; // 一時的に自分(turn)の石を置いておく
 
@@ -87,8 +86,8 @@ class Goban {
 
         // 自分が石を置くことで四方向の相手を囲むことができるか確認
         for (let i = 0; i < 4; i++) {
-            const nexty = y + Goban.DIRECTIONS_Y[i];
-            const nextx = x + Goban.DIRECTIONS_X[i];
+            const nexty = y + GoBoard.DIRECTIONS_Y[i];
+            const nextx = x + GoBoard.DIRECTIONS_X[i];
             if (this.isInBounds(nexty, nextx) && this.board[nexty][nextx] == this.getOpponentTurn(turn)) {
                 captures.push(
                     ...this.checkKakomare(
@@ -98,7 +97,7 @@ class Goban {
             }
         }
 
-        this.board[y][x] = EMPTY; // 最初に仮に置いた地点をクリア
+        this.board[y][x] = GoBoard.EMPTY; // 最初に仮に置いた地点をクリア
         return captures;
     }
 
@@ -107,7 +106,7 @@ class Goban {
         if (y === this.koY && x === this.koX && turn === this.turn) {
             return [false, []]; // コウ禁止点
         }
-        if (this.board[y][x] !== EMPTY) {
+        if (this.board[y][x] !== GoBoard.EMPTY) {
             return [false, []]; // すでに石がある
         }
         const captures = this.checkKakomi(y, x, turn);
@@ -127,13 +126,13 @@ class Goban {
             this.board[this.my][this.mx] = turn;
             let capturedCount = 0;
             for (const [y, x] of captures) {
-                if (this.board[y][x] !== EMPTY) {
-                    this.board[y][x] = EMPTY;
+                if (this.board[y][x] !== GoBoard.EMPTY) {
+                    this.board[y][x] = GoBoard.EMPTY;
                     capturedCount++;
                 }
             }
 
-            if(this.turn === BLACK){
+            if(this.turn === GoBoard.BLACK){
                 this.blackCaptureCount += capturedCount
             }else{
                 this.whiteCaptureCount += capturedCount
@@ -193,14 +192,12 @@ class Goban {
             );
         }
 
-
-
         // 碁石
         const colors = ["", "rgb(0,0,0)", "rgb(240,240,240)"];
 
         for (let j = 0; j < this.y; j++) {
             for (let i = 0; i < this.x; i++) {
-                if (this.board[j][i] !== EMPTY) {
+                if (this.board[j][i] !== GoBoard.EMPTY) {
                     this.ctx.fillStyle = colors[this.board[j][i]];
                     this.drawEllipse(
                         this.px + i * this.masx + this.masx / 2,
@@ -224,7 +221,7 @@ class Goban {
         }
 
         // オーバーマウス地点
-        if (this.onMouse && this.board[this.my][this.mx] === EMPTY) {
+        if (this.onMouse && this.board[this.my][this.mx] === GoBoard.EMPTY) {
             const hoverColors = ["", "rgba(0,0,0,0.3)", "rgba(240,240,240,0.3)"];
             this.ctx.fillStyle = hoverColors[this.turn];
             this.drawEllipse(

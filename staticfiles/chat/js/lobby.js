@@ -1,92 +1,62 @@
-const chatSocket = new WebSocket(
-	'ws://' + window.location.host.replace(':8000', ':8001') + '/ws/chat/lobby/'
-	);
+//lobby.js
+import { initializeWebSocket, processMessageQueue, saveInitializedSocket} from "./websocket.js";
+import { chatLog, roomListUpdate, roomList, roomNameInput, makeRoomModal , makeRoomSubmit} from "./elements.js";
+
+initializeWebSocket("chat/lobby").then( async (websocket) =>{
+	saveInitializedSocket(websocket); //利用可能ソケットを送りつける
+	const[chat_js,userlist_js] = await Promise.all([
+		import("./chat.js"),
+		import("./userlist.js")
+	])
+	//インポート完了
+	console.log("import_complated")
+
+	const chat_add = chat_js.chat_add
+	const user_list_update_socket = userlist_js.user_list_update_socket
+
+
+
+	websocket.registerFunction('join', (data)=>{
+		chat_add(chatLog,data.name + ' さんが入室しました',"div")
+		user_list_update_socket(websocket)
+		room_list_update_socket(websocket)
+	})
+
+	websocket.registerFunction('get_lobby_id', (data)=>{
+		window.roomid = data.result
+		console.log(`ロビーのroomidを取得しました -> ${window.roomid}`)
+	})
+	websocket.registerFunction('your_account_id', (data)=>{
+		window.userId = data.account_id
+	})
+	websocket.registerFunction('make_room',(data) =>{roomListUpdate.onclick()})
+	websocket.registerFunction('room-list-update',(data)=>{
+		console.log(data);
+		while(roomList.firstChild){
+			roomList.removeChild(roomList.firstChild);
+		}
+		for(let[key,value] of Object.entries(data.roomlist)){
+			let new_element = document.createElement('a');
+			new_element.href = window.location.origin + '/chat/' + value
+			new_element.textContent = "" + value + ":" + key;
+			roomList.appendChild(new_element);
+			roomList.appendChild(document.createElement('br'));
+		}
+	})
 	
-	chatSocket.onopen = function(e){
-		chatSocket.send(JSON.stringify({
-			'client_message_type': 'get_lobby_id'
-		}));
-	}
 
 
-	function room_list_update_socket(socket){
-		if (socket){
-			socket.send(JSON.stringify({
-				'client_message_type': 'room-list-update'
-			}));
-		}
-	}
-
-	chatSocket.onmessage = function(e) {
-
-		const data = JSON.parse(e.data);
-		console.log(data.server_message_type);
-		switch(data.server_message_type){
-			case 'join':
-				chat_add(document.querySelector('#chat-log'),data.name + ' さんが入室しました',"div")
-				user_list_update_socket(chatSocket)
-				room_list_update_socket(chatSocket)
-			break;
-			case 'get_lobby_id':
-				roomid = data.result
-				console.log(`ロビーのroomidを取得しました -> ${roomid}`)
-			break;
-			case 'chat':
-				console.log("chat-lobby.js    " + data.content)
-				let element = document.querySelector('#chat-log');
-				chat_add(element,data.name + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
-				element.scrollTop = element.scrollHeight - element.clientHeight;
-			break;
-			case 'make_room':
-				document.querySelector('#room-list-update').onclick()
-			break;
-			case 'room-list-update':
-				console.log(data);
-				let roomlist = document.querySelector('#room-list')
-				while(roomlist.firstChild){
-					roomlist.removeChild(roomlist.firstChild);
-				}
-				for(let[key,value] of Object.entries(data).slice(2,)){ //２個スライスしてるのは一つ目は誰からのメッセージか、二つ目はサーバーのメッセージタイプが入ってるからよ。
-					let new_element = document.createElement('a');
-					new_element.href = window.location.origin + '/chat/' + value
-					new_element.textContent = "" + value + ":" + key;
-					roomlist.appendChild(new_element);
-					roomlist.appendChild(document.createElement('br'));
-				}
-			break
-			case 'user-list-update':
-				user_list_update(data);
-			break
-			case 'get-user-page':
-				console.log('開けゴマ')
-				window.location(data.url);
-			break
-			case 'leave':
-				document.querySelector('#chat-log').innerHTML += (data.name + ' さんが退室しました<br>');
-				user_list_update_socket(chatSocket);
-			break
-		}
+	roomListUpdate.onclick = ()=>{room_list_update_socket(websocket)}
+	makeRoomSubmit.onclick = function(e) {
+		makeRoomModal.showModal();
 	};
 	
-	chatSocket.onclose = function(e) {
-		console.error('Chat socket closed unexpectedly');
-	};	
-
-
-	document.querySelector('#room-list-update').onclick = ()=>{room_list_update_socket(chatSocket)}
-
-	document.querySelector('#make-room-submit').onclick = function(e) {
-		document.getElementById('make-room-modal').showModal();
-	};
-
-
-	const dialog = document.querySelector('#make-room-modal')
-	dialog.addEventListener('close', () => {
-		switch(dialog.returnValue){
+	makeRoomModal.addEventListener('close', () => {
+		switch(makeRoomModal.returnValue){
 			case 'make-room-submit':
-				chatSocket.send(JSON.stringify({
+				websocket.send(JSON.stringify({
 					'client_message_type': 'make_room',
-					'room_name': document.querySelector('#room_name_input').value
+					'room_name': roomNameInput.value
 				}));
 			break;
 			case 'make-room-cancel':
@@ -94,3 +64,17 @@ const chatSocket = new WebSocket(
 			break;
 		}
 	});
+	
+	
+	function room_list_update_socket(socket){
+		if (socket){
+			socket.send(JSON.stringify({
+				'client_message_type': 'room-list-update'
+			}));
+		}
+	}
+	websocket.send(JSON.stringify({
+		'client_message_type': 'get_lobby_id'
+	}))
+	processMessageQueue(); //たまったメッセージを処理
+})

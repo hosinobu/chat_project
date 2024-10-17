@@ -37,8 +37,10 @@ class SendMethodMixin():
     #全てのメッセージは最終的にこの関数からクライアントに送られる
     async def send_message(self, event):
         logger.info(event['server_message_type'])
+        #fromが設定されてなければ、ソケット自身からのメッセージ
+        if not event.get('from'):
+            event['from'] = self.user.account_id
         await self.send(text_data=json.dumps({
-            'from': self.user.account_id,
             **event
         }))
 
@@ -50,6 +52,7 @@ class SendMethodMixin():
             {
                 'type': 'send_message',
                 'server_message_type': server_message_type,
+                'from': self.user.account_id, #誰からのメッセージかを設定
                 **kwargs
             }
         )
@@ -125,7 +128,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
             )
 
             await self.accept()
-            await self.send_message_to_client('your_account_id', account_id = self.user.account_id)
+            await self.send_message_to_client('your_account_id', account_id = self.user.account_id, is_server = True)
             self.last_active_time = time.time()
             self.check_timeout_task = asyncio.create_task(self.check_timeout())
 
@@ -205,7 +208,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                     return list(chatroom)
                 room_list = { i.name : i.id for i in await make_room()}
                 await self.send_message_to_client(client_message_type)
-                await self.send_message_to_group(client_message_type, **room_list)
+                await self.send_message_to_group(client_message_type, roomlist = room_list)
             
             case 'room-list-update':
 
@@ -240,13 +243,14 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 return []
         result = await get_chat_room_all()
         room_list = { i.name : i.id for i in result}
-        await self.send_message_to_client(message_type, **room_list)
+        await self.send_message_to_client(message_type, roomlist = room_list)
         
     async def check_timeout(self, wait_minute = 5, loop_wait = 20):
         waittime = loop_wait if loop_wait >= 1 else 1
         end_time = wait_minute * 60
         while time.time() < self.last_active_time + end_time:
             await asyncio.sleep(waittime)
+        await self.send_message_to_client('timeout')
         await self.close()
 
 class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):

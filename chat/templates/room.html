@@ -5,13 +5,8 @@
 
 	{% load static %}
 		<link rel="stylesheet" href = "{% static 'chat/css/room.css' %}">
-		<script> const roomid = parseInt("{{ room.id }}"); </script>
-		<script src="{% static 'chat/js/chat.js' %}" defer></script>
-		<script src="{% static 'chat/js/userlist.js' %}" defer></script>
-		<script src="{% static 'chat/js/room.js' %}" defer></script>
-		<script src="{% static 'chat/js/goban/functions.js' %}" defer></script>
-		<script src="{% static 'chat/js/goban/goban.js' %}" defer></script>
-		<script src="{% static 'chat/js/goban/main.js' %}" defer></script>
+		<script> window.roomid = parseInt("{{ room.id }}"); </script>
+		<script src="{% static 'chat/js/room.js' %}" type = "module"></script>
 	{% endblock %}
 
 

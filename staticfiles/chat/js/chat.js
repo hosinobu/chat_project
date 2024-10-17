@@ -1,81 +1,78 @@
-document.getElementById('chat-message-submit').onclick = ()=>{
+//chat.js
+import {getSocket} from "./websocket.js";
+import {chatInput, eButton, imageInput, chatSubmit,
+     chatLog, clearChatInput, focusChatInput, csrftoken
+    } from "./elements.js";
+const socket = getSocket()
+socket.registerFunction('chat', (data)=>{
+    chat_add(chatLog, data.from + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
+    chatLog.scrollTop = chatLog.scrollHeight - chatLog.clientHeight;
+})
+function sendMessage(){
+    let content = chatInput.value;
+    const urlRegex = /(https?|ftp|file):\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\/[a-zA-Z0-9.=-_?#%$&/]*)?/g;
+    
+    const formattedContent = content.replace(urlRegex, (url) => {
+        return `<a href='${url}' target='_blank' rel='noreferrer'>${url}</a>`;
+    });
+    
+    const imageFile = imageInput.files[0];  // 選択された画像ファイル
+    
+    const formData = new FormData();
+    formData.append('content',formattedContent)
+
+    if (formattedContent || imageFile) {
+        if (imageFile) {
+            console.log("http_post!--"+window.roomid)
+            console.log(formattedContent)
+            // 画像がある場合は、HTTP POSTで送信
+            formData.append('image', imageFile);
+
+            fetch(`/chat/${window.roomid}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,  // CSRFトークン
+                    'X-Requested-With' : ' XMLHttpRequest',
+                },
+                body: formData
+            }).then(response => {
+                if (!response.ok){
+                    throw new Error('Network response was not ok')
+                }
+                return response.json()
+            }).then(data => {
+                console.log('Success:',data);
+            });
+        } else {
+            // 画像がない場合は、WebSocketでメッセージを送信
+            socket.send(JSON.stringify({
+                'client_message_type': 'chat',
+                'content': formattedContent,
+            }));
+        }
+    }
+
+    //入力フィールドと画像のリセット
+    clearChatInput()
+}
+
+chatSubmit.onclick = ()=>{
     sendMessage()
 }
-document.getElementById('chat-message-input').onkeydown =(event)=>{
+chatInput.onkeydown =(event)=>{
     if (event.key === "Enter"){
         event.preventDefault();
         sendMessage();
     }
 }
 
-const chatinput = document.querySelector('#chat-message-input')
-const ebutton = document.querySelector('#emoji-button')
-const imageinput = document.querySelector('#image-input')
-const chatsubmit = document.querySelector('#chat-form')
-
-
-function sendMessage(){
-
-    let content = chatinput.value;
-    const urlRegex = /(https?|ftp|file):\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\/[a-zA-Z0-9.=-_?#%$&/]*)?/g;
-    
-    content = content.replace(urlRegex, (url) => {
-        return `<a href='${url}' target='_blank' rel='noreferrer'>${url}</a>`;
-    });
-
-    const csrftoken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const imageFile = imageinput.files[0];  // 選択された画像ファイル
-    
-    const formData = new FormData();
-    formData.append('content',content)
-
-    if (content || imageFile) {
-        if (imageFile) {
-             console.log("http_post!--"+roomid)
-             console.log(content)
-             // 画像がある場合は、HTTP POSTで送信
-             const formData = new FormData();
-             formData.append('content', content?content:"");
-             formData.append('image', imageFile);
- 
-             fetch(`/chat/${roomid}/`, {
-                 method: 'POST',
-                 headers: {
-                     'X-CSRFToken': csrftoken,  // CSRFトークン
-                     'X-Requested-With' : ' XMLHttpRequest',
-                 },
-                 body: formData
-             }).then(response => {
-                 if (!response.ok){
-                     throw new Error('Network response was not ok')
-                 }
-                 return response.json()
-             }).then(data => {
-                 console.log('Success:',data);
-             });
-         } else {
-             // 画像がない場合は、WebSocketでメッセージを送信
-             chatSocket.send(JSON.stringify({
-                 'client_message_type': 'chat',
-                 'content': content,
-             }));
-         }
-     }
- 
-     //入力フィールドと画像のリセット
-     chatinput.value = '';
-     imageinput.value = '';
-     //*/
- }
-chatinput.focus();
-
 const picker = new EmojiButton();
 picker.on('emoji', emoji => {
-	insertAtCaret(chatinput,emoji);
+    insertAtCaret(chatInput,emoji);
 });
 
-ebutton.onclick = ()=>{
-	picker.showPicker(ebutton);
+eButton.onclick = ()=>{
+    picker.showPicker(eButton);
 };
 
 // カーソル位置に絵文字を挿入する関数
@@ -91,10 +88,10 @@ function insertAtCaret(input, textToInsert) {
 }
 
 //チャット欄にメッセージを追加する関数
-function chat_add(tag,content,addtag,image = "",thumbnail = ""){
-	const new_text_element = document.createElement(addtag)
-	new_text_element.innerHTML = content
-	if (image){//画像あり
+export function chat_add(tag,content,addtag,image = "",thumbnail = ""){
+    const new_text_element = document.createElement(addtag)
+    new_text_element.innerHTML = content
+    if (image){//画像あり
         console.log("画像あり")
         const new_img_element = document.createElement('img')
         if (thumbnail){//サムネイルあり
@@ -108,8 +105,9 @@ function chat_add(tag,content,addtag,image = "",thumbnail = ""){
             new_img_element.src = image
             new_text_element.appendChild(new_img_element)
         }
-	}
-	tag.appendChild(new_text_element)
+    }
+    tag.appendChild(new_text_element)
 }
 
-//*/
+focusChatInput();
+

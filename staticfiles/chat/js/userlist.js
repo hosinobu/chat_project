@@ -1,29 +1,33 @@
-document.querySelector('#user-list-update').onclick = ()=>{user_list_update_socket(chatSocket)}
+import { getSocket } from "./websocket.js"
+import { userListContainer as userlist_container, userListUpdate, chatLog} from "./elements.js";
 
-function user_list_update_socket(socket){
-	if (socket){
-		socket.send(JSON.stringify({
-			'client_message_type': 'user-list-update'
-			})
-		)
-	}
+	const socket = getSocket()
+	socket.registerFunction('user-list-update', (data)=>{user_list_update(data);})
+	socket.registerFunction('get-user-page',(data)=>{window.open(data.url);})
+	socket.registerFunction('leave', (data)=>{
+		chatLog.innerHTML += (data.name + ' さんが退室しました<br>');
+		user_list_update_socket(socket);
+	})
+	userListUpdate.onclick = ()=>{user_list_update_socket(socket)}
+	userlist_container.addEventListener('click',(event)=>{
+		console.log('リンクの親コンテナがクリックされたよ')
+		if (event.target.classList.contains('link-userlist')){
+			event.preventDefault();
+			console.log("リンクがクリックされたよ")
+			socket.send(JSON.stringify({
+				'client_message_type': 'get-user-page',
+				'userid': event.target.dataset.userId
+			}))
+		}
+	})
+
+export function user_list_update_socket(socket){
+	socket.send(JSON.stringify({
+		'client_message_type': 'user-list-update'
+		})
+	)
 }
-
-
-const userlist_container = document.querySelector('#user-list')
-userlist_container.addEventListener('click',(event)=>{
-	console.log('リンクの親コンテナがクリックされたよ')
-	if (event.target.classList.contains('link-userlist')){
-		event.preventDefault();
-		console.log("リンクがクリックされたよ")
-		chatSocket.send(JSON.stringify({
-			'client_message_type': 'get-user-page',
-			'userid': event.target.dataset.userId
-		}))
-	}
-})
-
-function user_list_update(data_from_server){
+export function user_list_update(data_from_server){
 	
 	while(userlist_container.firstChild){
 		userlist_container.removeChild(userlist_container.firstChild);

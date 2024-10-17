@@ -1,21 +1,82 @@
-const chatSocket = new WebSocket(
-    'ws://' + window.location.host.replace(':8000', ':8001') + '/ws/chat/' + roomid + "/"
-    );
+import {initializeWebSocket, getWebSocket} from "./websocket.js";
+import { chat_add } from "./chat.js";
+import { user_list_update, user_list_update_socket} from "./userlist.js";
+import { makeBoardModal, makeBoard, inputBoardX, inputBoardY,boardCanvas } from "./elements.js";
+import GoBoard from "./goban/goban.js";
 
-chatSocket.onopen= function(e){
-    console.log("" + roomid +"に接続成功")
+let goban; //碁盤用の変数
+function mainloop(){
+    if(goban){
+        goban.draw();
+        
+    }
+    requestAnimationFrame(mainloop)
 }
+mainloop();
+initializeWebSocket("chat/" + window.roomid)
+const socket = await getWebSocket();
+socket.registerFunction('your_account_id',(data)=>{
+    window.account_id = data.account_id
+});
+socket.registerFunction('join',(data)=>{
+    console.log('joined -> ', data.name)
+    chat_add(document.querySelector('#chat-log'),data.name + ' さんが入室しました',"div")
+    user_list_update_socket(socket);
+    if (data.name === window.account_id) return;
+    createOffer(data.name)
+})
+socket.registerFunction('make_go_board',(data)=>{
+    console.log(`作るよ碁盤、このサイズ→:${data.y} ${data.x}`)
+    const canvas = document.createElement('canvas')
+    
+    boardCanvas.appendChild(canvas)
 
-const dialog = document.querySelector('#make-board-modal')
-dialog.addEventListener('close', () => {
-    switch(dialog.returnValue){
+
+    function getMousePos(canvas, event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: event.clientX - rect.left, // Canvas内のX座標
+            y: event.clientY - rect.top    // Canvas内のY座標
+        };
+    }
+    goban = new GoBoard(canvas.getContext("2d"),data.id,400,400,data.y,data.x,0,0)
+});
+socket.registerFunction('place_stone',(data)=>{
+    
+    console.log(data)
+    goban_board.board = data.board
+    goban_board.turn = data.turn
+    goban_board.koY = data.koY
+    goban_board.koX = data.koX
+    goban_board.koTurn = data.koTurn
+    goban_board.blackCaptureCount = data.black_capture
+    goban_board.whiteCaptureCount = data.white_capture
+})
+
+socket.registerFunction('p2pOffer',(data)=>{
+    if(window.account_id === data.from){
+        console.log('your_offer')
+        return;
+    }
+    console.log('オファーハンドラを呼びます')
+    handleOffer(data.from, data.offer);
+})
+socket.registerFunction('p2pAnswer',(data)=>{
+    console.log('アンサーハンドラを呼びます')
+    handleAnswer(data.from, data.answer);
+})
+
+socket.registerFunction('p2pIceCandidate',(data)=>{
+    console.log('ICE候補ハンドラを呼びます')
+    handleIceCandidate(data.from, data.candidate)
+})
+makeBoardModal.addEventListener('close', () => {
+    switch(makeBoardModal.returnValue){
         case 'make-board-submit':
-
-            console.log(typeof document.querySelector('#input-boardx').value)
-            chatSocket.send(JSON.stringify({
+            socket.send(JSON.stringify({
                 'client_message_type': "make_go_board",
-                'x': parseInt(document.querySelector('#input-boardx').value),
-                'y': parseInt(document.querySelector('#input-boardy').value)
+                'x': parseInt(inputBoardX.value),
+                'y': parseInt(inputBoardY.value)
             }));
         break;
         case 'make-board-cancel':
@@ -24,73 +85,9 @@ dialog.addEventListener('close', () => {
 
     }
 });
-
-let account_id
-
-chatSocket.onmessage = function(e) {
-
-    const data = JSON.parse(e.data);
-    console.log('received message from server :: ',data.server_message_type);
-    switch(data.server_message_type){
-        case 'your_account_id':
-            account_id = data.account_id
-        break
-        case 'join':
-            console.log('joined ->', data.name)
-            chat_add(document.querySelector('#chat-log'),data.name + ' さんが入室しました',"div")
-            user_list_update_socket(chatSocket);
-            if (data.name === account_id) return;
-            createOffer(data.name)
-        break;
-        case 'leave':
-            chat_add(document.querySelector('#chat-log'),data.name + ' さんが退室しました',"div")
-            user_list_update_socket(chatSocket);
-        break
-        case 'chat':
-            let element = document.querySelector('#chat-log');
-            chat_add(element,data.name + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
-            element.scrollTop = element.scrollHeight - element.clientHeight;
-        break;
-        case 'user-list-update':
-            user_list_update(data);
-        break
-        case 'get-user-page':
-            console.log('開けゴマ')
-            window.open(data.url);
-        break
-        case 'make_go_board':
-            console.log(`作るよ碁盤、このサイズ→:${data.y} ${data.x}`)
-            goban_board = new Goban(ctx,data.id,400,400,data.y,data.x,0,0)
-        break
-        case 'place_stone':
-            console.log(data)
-            goban_board.board = data.board
-            goban_board.turn = data.turn
-            goban_board.koY = data.koY
-            goban_board.koX = data.koX
-            goban_board.koTurn = data.koTurn
-            goban_board.blackCaptureCount = data.black_capture
-            goban_board.whiteCaptureCount = data.white_capture
-        break
-        case 'p2pOffer':
-            if(account_id === data.from){
-                console.log('your_offer')
-                return;
-            }
-            console.log('オファーハンドラを呼びます')
-            handleOffer(data.from, data.offer);
-        break
-        case 'p2pAnswer':
-            console.log('アンサーハンドラを呼びます')
-            handleAnswer(data.from, data.answer);
-        break
-        case 'p2pIceCandidate':
-            console.log('ICE候補ハンドラを呼びます')
-            handleIceCandidate(data.from, data.candidate)
-        break
-    }
+makeBoard.onclick = ()=>{
+    makeBoardModal.showModal();
 };
-
 
 const remoteAudio = document.getElementById('remoteAudio');
 const peerConnections = {}; // アカウントIDごとにRTCPeerConnectionを保持するオブジェクト
@@ -101,6 +98,12 @@ const configuration = {
         { urls: 'stun:stun2.l.google.com:19302' }
     ]
 };
+
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    console.log("このブラウザはgetUserMediaをサポートしています");
+} else {
+    console.error("このブラウザではgetUserMediaがサポートされていません");
+}
 
 let localStream
 
@@ -160,7 +163,7 @@ function peerConnection_init(accountId, peerConnection){
     peerConnection.onicecandidate = event => {
         console.log('ICE候補イベント:', event.candidate);
         if (event.candidate) {
-            chatSocket.send(JSON.stringify({
+            socket.send(JSON.stringify({
                 'client_message_type': 'p2pIceCandidate',
                 'candidate': event.candidate,
                 'for': accountId
@@ -182,10 +185,10 @@ async function createOffer(accountId) {
         await peerConnection.setLocalDescription(offer);
                 
         console.log('sending offer ->', accountId)
-        chatSocket.send(JSON.stringify({
+        socket.send(JSON.stringify({
             'client_message_type': 'p2pOffer',
             'offer': peerConnection.localDescription,
-            'for': accountId //オファーを出す相手
+            'for': window.accountId //オファーを出す相手
         }));
 
         peerConnection_init(accountId, peerConnection)
@@ -212,7 +215,7 @@ async function handleOffer(accountId, offer) {
     await peerConnection.setLocalDescription(answer);
 
     console.log('sendding answer -> ', accountId)
-    chatSocket.send(JSON.stringify({
+    socket.send(JSON.stringify({
         'client_message_type': 'p2pAnswer',
         'answer': peerConnection.localDescription,
         'for': accountId, //answerを返す相手

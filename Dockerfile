@@ -10,8 +10,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+
 # プロジェクトファイルをコピー
 COPY . .
 
+ENV TZ Asia/Tokyo
+
 # ASGIサーバーを起動
 CMD ["daphne", "-u", "/app/daphne.sock", "chat_project.asgi:application"]
+

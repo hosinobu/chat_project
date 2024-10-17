@@ -146,7 +146,9 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+            "hosts": [
+				('127.0.0.1', 6379)
+			],
         },
     },
 }
@@ -185,8 +187,15 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesSto
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # mediaディレクトリのパスを設定
 
-CSRF_TRUSTED_ORIGINS = []
+CSRF_TRUSTED_ORIGINS = ["https://200e-2400-2650-2841-200-81ce-311f-d8d6-2f74.ngrok-free.app"]
 
-
-#ALLOWED_ORIGINS = ["http://localhost:8001"]
-#CORS_ALLOWED_ORIGINS = ["http://localhost:8001"]
+ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://192.168.3.10:8000"
+]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://192.168.3.10:8000"
+]
