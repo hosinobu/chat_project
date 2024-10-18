@@ -1,9 +1,0 @@
-#chat-log,#user-list,#room-list{
-	height: 200px;
-	overflow-y: scroll;
-	background-color: #888888;
-}
-
-.link-userlist{
-	display:block
-}
