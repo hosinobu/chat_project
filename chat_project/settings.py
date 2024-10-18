@@ -187,7 +187,7 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesSto
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # mediaディレクトリのパスを設定
 
-CSRF_TRUSTED_ORIGINS = ["https://200e-2400-2650-2841-200-81ce-311f-d8d6-2f74.ngrok-free.app"]
+CSRF_TRUSTED_ORIGINS = ["https://d9c3-2400-2650-2841-200-5932-c7f8-1131-467e.ngrok-free.app"]
 
 ALLOWED_ORIGINS = [
     "http://localhost:8000",

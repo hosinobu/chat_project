@@ -1,83 +1,72 @@
 //chat.js
-import {getWebSocket} from "./websocket.js";
+import { getSocket } from "./websocket.js";
 import {
-    chatInput,
-     eButton,
-     imageInput,
-     chatSubmit,
-     chatLog,
-     clearChatInput,
-     focusChatInput,
-     csrftoken
+    chatInput, eButton, imageInput, chatSubmit, chatLog,
+     clearChatInput, focusChatInput, csrftoken
     } from "./elements.js";
+const socket = getSocket();
+socket.registerFunction('chat', (data)=>{
+    chat_add(chatLog, data.from + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
+    chatLog.scrollTop = chatLog.scrollHeight - chatLog.clientHeight;
+})
+function sendMessage(){
 
-async function setup_sendMessage(){
-    const socket = await getWebSocket();
-    socket.registerFunction('chat', (data)=>{
-        chat_add(chatLog, data.name + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
-        chatLog.scrollTop = chatLog.scrollHeight - chatLog.clientHeight;
-    })
-    function sendMessage(){
+    let content = chatInput.value;
+    const urlRegex = /(https?|ftp|file):\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\/[a-zA-Z0-9.=-_?#%$&/]*)?/g;
+    
+    const formattedContent = content.replace(urlRegex, (url) => {
+        return `<a href='${url}' target='_blank' rel='noreferrer'>${url}</a>`;
+    });
+    
+    const imageFile = imageInput.files[0];  // 選択された画像ファイル
+    
+    const formData = new FormData();
+    formData.append('content',formattedContent)
 
-        let content = chatInput.value;
-        const urlRegex = /(https?|ftp|file):\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\/[a-zA-Z0-9.=-_?#%$&/]*)?/g;
-        
-        const formattedContent = content.replace(urlRegex, (url) => {
-            return `<a href='${url}' target='_blank' rel='noreferrer'>${url}</a>`;
-        });
-        
-        const imageFile = imageInput.files[0];  // 選択された画像ファイル
-        
-        const formData = new FormData();
-        formData.append('content',formattedContent)
+    if (formattedContent || imageFile) {
+        if (imageFile) {
+            console.log("http_post!--"+window.roomid)
+            console.log(formattedContent)
+            // 画像がある場合は、HTTP POSTで送信
+            formData.append('image', imageFile);
 
-        if (formattedContent || imageFile) {
-            if (imageFile) {
-                console.log("http_post!--"+window.roomid)
-                console.log(formattedContent)
-                // 画像がある場合は、HTTP POSTで送信
-                formData.append('image', imageFile);
-
-                fetch(`/chat/${window.roomid}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrftoken,  // CSRFトークン
-                        'X-Requested-With' : ' XMLHttpRequest',
-                    },
-                    body: formData
-                }).then(response => {
-                    if (!response.ok){
-                        throw new Error('Network response was not ok')
-                    }
-                    return response.json()
-                }).then(data => {
-                    console.log('Success:',data);
-                });
-            } else {
-                // 画像がない場合は、WebSocketでメッセージを送信
-                console.log("A")
-                socket.send(JSON.stringify({
-                    'client_message_type': 'chat',
-                    'content': content,
-                }));
-            }
+            fetch(`/chat/${window.roomid}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,  // CSRFトークン
+                    'X-Requested-With' : ' XMLHttpRequest',
+                },
+                body: formData
+            }).then(response => {
+                if (!response.ok){
+                    throw new Error('Network response was not ok')
+                }
+                return response.json()
+            }).then(data => {
+                console.log('Success:',data);
+            });
+        } else {
+            // 画像がない場合は、WebSocketでメッセージを送信
+            socket.send(JSON.stringify({
+                'client_message_type': 'chat',
+                'content': formattedContent,
+            }));
         }
-
-        //入力フィールドと画像のリセット
-        clearChatInput()
     }
 
-    chatSubmit.onclick = ()=>{
-        sendMessage()
-    }
-    chatInput.onkeydown =(event)=>{
-        if (event.key === "Enter"){
-            event.preventDefault();
-            sendMessage();
-        }
+    //入力フィールドと画像のリセット
+    clearChatInput()
+}
+
+chatSubmit.onclick = ()=>{
+    sendMessage()
+}
+chatInput.onkeydown =(event)=>{
+    if (event.key === "Enter"){
+        event.preventDefault();
+        sendMessage();
     }
 }
-setup_sendMessage();
 
 const picker = new EmojiButton();
 picker.on('emoji', emoji => {

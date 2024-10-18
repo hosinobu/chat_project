@@ -2,8 +2,8 @@
 import { initializeWebSocket, processMessageQueue, saveInitializedSocket} from "./websocket.js";
 import { chatLog, roomListUpdate, roomList, roomNameInput, makeRoomModal , makeRoomSubmit} from "./elements.js";
 
-initializeWebSocket("chat/lobby").then( async (websocket) =>{
-	saveInitializedSocket(websocket); //利用可能ソケットを送りつける
+initializeWebSocket("chat/lobby").then( async (socket) =>{
+	saveInitializedSocket(socket); 
 	const[chat_js,userlist_js] = await Promise.all([
 		import("./chat.js"),
 		import("./userlist.js")
@@ -13,24 +13,20 @@ initializeWebSocket("chat/lobby").then( async (websocket) =>{
 
 	const chat_add = chat_js.chat_add
 	const user_list_update_socket = userlist_js.user_list_update_socket
-
-
-
-	websocket.registerFunction('join', (data)=>{
-		chat_add(chatLog,data.name + ' さんが入室しました',"div")
-		user_list_update_socket(websocket)
-		room_list_update_socket(websocket)
-	})
-
-	websocket.registerFunction('get_lobby_id', (data)=>{
+	socket.registerFunction('join',(data)=>{
+        console.log('joined -> ', data.name)
+        chat_add(chatLog, data.name + ' さんが入室しました',"div")
+        user_list_update_socket(socket);
+    })
+	socket.registerFunction('get_lobby_id', (data)=>{
 		window.roomid = data.result
 		console.log(`ロビーのroomidを取得しました -> ${window.roomid}`)
 	})
-	websocket.registerFunction('your_account_id', (data)=>{
+	socket.registerFunction('your_account_id', (data)=>{
 		window.userId = data.account_id
 	})
-	websocket.registerFunction('make_room',(data) =>{roomListUpdate.onclick()})
-	websocket.registerFunction('room-list-update',(data)=>{
+	socket.registerFunction('make_room',(data) =>{roomListUpdate.onclick()})
+	socket.registerFunction('room-list-update',(data)=>{
 		console.log(data);
 		while(roomList.firstChild){
 			roomList.removeChild(roomList.firstChild);
@@ -43,18 +39,15 @@ initializeWebSocket("chat/lobby").then( async (websocket) =>{
 			roomList.appendChild(document.createElement('br'));
 		}
 	})
-	
-
-
-	roomListUpdate.onclick = ()=>{room_list_update_socket(websocket)}
+	roomListUpdate.onclick = ()=>{room_list_update_socket(socket)}
 	makeRoomSubmit.onclick = function(e) {
 		makeRoomModal.showModal();
 	};
-	
+
 	makeRoomModal.addEventListener('close', () => {
 		switch(makeRoomModal.returnValue){
 			case 'make-room-submit':
-				websocket.send(JSON.stringify({
+				socket.send(JSON.stringify({
 					'client_message_type': 'make_room',
 					'room_name': roomNameInput.value
 				}));
@@ -64,17 +57,21 @@ initializeWebSocket("chat/lobby").then( async (websocket) =>{
 			break;
 		}
 	});
-	
-	
-	function room_list_update_socket(socket){
-		if (socket){
-			socket.send(JSON.stringify({
+
+	function room_list_update_socket(websocket){
+		if (websocket){
+			websocket.send(JSON.stringify({
 				'client_message_type': 'room-list-update'
 			}));
 		}
 	}
-	websocket.send(JSON.stringify({
+	socket.send(JSON.stringify({
 		'client_message_type': 'get_lobby_id'
 	}))
-	processMessageQueue(); //たまったメッセージを処理
+	room_list_update_socket(socket);
+	processMessageQueue();
 })
+    
+
+
+

@@ -1,34 +1,31 @@
-import {getWebSocket} from "./websocket.js"
+//userlist.js
+import {getSocket} from "./websocket.js"
 import { userListContainer as userlist_container, userListUpdate, chatLog} from "./elements.js";
 
-async function setup(){
-	const socket = await getWebSocket();
-	socket.registerFunction('user-list-update', (data)=>{user_list_update(data);})
-	socket.registerFunction('get-user-page',(data)=>{window.open(data.url);})
-	socket.registerFunction('leave', (data)=>{
-		chatLog.innerHTML += (data.name + ' さんが退室しました<br>');
-		user_list_update_socket(socket);
-	})
-	userListUpdate.onclick = ()=>{user_list_update_socket(socket)}
-	userlist_container.addEventListener('click',(event)=>{
-		console.log('リンクの親コンテナがクリックされたよ')
-		if (event.target.classList.contains('link-userlist')){
-			event.preventDefault();
-			console.log("リンクがクリックされたよ")
-			socket.send(JSON.stringify({
-				'client_message_type': 'get-user-page',
-				'userid': event.target.dataset.userId
-			}))
-		}
-	})
-}
-setup();
+const socket = await getSocket();
+socket.registerFunction('user-list-update', (data)=>{user_list_update(data);})
+socket.registerFunction('get-user-page',(data)=>{window.open(data.url);})
+socket.registerFunction('leave', (data)=>{
+	chatLog.innerHTML += (data.name + ' さんが退室しました<br>');
+	user_list_update_socket(socket);
+})
+userListUpdate.onclick = ()=>{user_list_update_socket(socket)}
+userlist_container.addEventListener('click',(event)=>{
+	console.log('リンクの親コンテナがクリックされたよ')
+	if (event.target.classList.contains('link-userlist')){
+		event.preventDefault();
+		console.log("リンクがクリックされたよ")
+		socket.send(JSON.stringify({
+			'client_message_type': 'get-user-page',
+			'userid': event.target.dataset.userId
+		}))
+	}
+})
 
 
 
-
-export function user_list_update_socket(socket){
-	socket.send(JSON.stringify({
+export function user_list_update_socket(websocket){
+	websocket.send(JSON.stringify({
 		'client_message_type': 'user-list-update'
 		})
 	)

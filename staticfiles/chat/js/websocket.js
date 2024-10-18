@@ -21,9 +21,8 @@ export async function initializeWebSocket(url){
             console.log('WebSocket connection opened');
             resolve(websocket); // WebSocketの初期化が完了したらresolveを呼ぶ
         };
-        websocket.onclose = () => {
-            console.log('WebSocket connection closed. Attempting to reconnect...');
-            setTimeout(() => initializeWebSocket(url), 1000); // URLを保持しつつ1秒後に再接続
+        websocket.onclose = (e) => {
+            console.log('WebSocket connection closed.', e);
         };
 
         websocket.functions = {};

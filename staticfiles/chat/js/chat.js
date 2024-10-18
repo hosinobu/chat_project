@@ -1,14 +1,16 @@
 //chat.js
-import {getSocket} from "./websocket.js";
-import {chatInput, eButton, imageInput, chatSubmit,
-     chatLog, clearChatInput, focusChatInput, csrftoken
+import { getSocket } from "./websocket.js";
+import {
+    chatInput, eButton, imageInput, chatSubmit, chatLog,
+     clearChatInput, focusChatInput, csrftoken
     } from "./elements.js";
-const socket = getSocket()
+const socket = getSocket();
 socket.registerFunction('chat', (data)=>{
     chat_add(chatLog, data.from + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
     chatLog.scrollTop = chatLog.scrollHeight - chatLog.clientHeight;
 })
 function sendMessage(){
+
     let content = chatInput.value;
     const urlRegex = /(https?|ftp|file):\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\/[a-zA-Z0-9.=-_?#%$&/]*)?/g;
     

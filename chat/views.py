@@ -28,7 +28,6 @@ class LobbyView(AsyncLoginRequiredMixin, View):
         print(a)
         return a
     
-    
     async def post(self, request, roomid):
         logger.info('lobby_post')
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
