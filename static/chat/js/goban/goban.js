@@ -39,7 +39,7 @@ export default class GoBoard{
     }
 
     getOpponentTurn(turn = this.turn) {
-        return (turn === GoBoard.BLACK) ? WHITE : GoBoard.BLACK;
+        return (turn === GoBoard.BLACK) ? GoBoard.WHITE : GoBoard.BLACK;
     }
 
     isInBounds(y, x) {

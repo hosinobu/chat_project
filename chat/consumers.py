@@ -389,6 +389,8 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
                 @database_sync_to_async
                 def get_go_board():
                     board = GoBoard.objects.get(id = id)
+                    if board.turn != turn:
+                        return False,[] #同時に操作が来た可能性が高い
                     if board.place_stone(y, x, turn): #ここで盤面の変更とsave()が行われる。変更があればTrueが返ってくる
                         return True, {
                             "id": board.id,

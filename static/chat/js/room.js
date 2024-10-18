@@ -1,9 +1,14 @@
 //room.js
 import { initializeWebSocket, processMessageQueue, saveInitializedSocket} from "./websocket.js";
-import { chatLog, makeBoardModal, makeBoard, inputBoardX, inputBoardY,boardCanvas } from "./elements.js";
+import { chatLog, makeBoardModal, makeBoard, inputBoardX, inputBoardY,boardCanvas, toggle_muteAudioButton } from "./elements.js";
 import GoBoard from "./goban/goban.js";
 
 let goban; //碁盤用の変数
+let iceCandidateQueue = []
+let localStream
+toggle_muteAudioButton.addEventListener('click',() => {
+    toggle_muteAudio(localStream);
+})
 
 initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
 	saveInitializedSocket(socket); 
@@ -44,7 +49,7 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
             );
         })
         canvas.addEventListener('click', () =>{
-            if(goban.canMove(goban.my,goban.mx,goban.turn)){
+            if(goban.canMove(goban.my,goban.mx,goban.turn)[0]){
                 socket.send(JSON.stringify({
                     'client_message_type':'place_stone',
                     'x' : goban.mx,
@@ -52,6 +57,8 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
                     'turn' : goban.turn,
                     'id': goban.id
                 }))
+            }else{
+                console.log("そこには置けません")
             }
         })
     });
@@ -84,6 +91,7 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
     makeBoardModal.addEventListener('close', () => {
         switch(makeBoardModal.returnValue){
             case 'make-board-submit':
+
                 socket.send(JSON.stringify({
                     'client_message_type': "make_go_board",
                     'x': parseInt(inputBoardX.value),
@@ -116,8 +124,8 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
         console.error("このブラウザではgetUserMediaがサポートされていません");
     }
     
-    let localStream
-    
+
+
     // 音声ストリームを取得する非同期関数
     async function getAudioStream() {
         if (localStream){
@@ -160,11 +168,7 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
             }
         };
     
-        //トラックイベントハンドリング
-        peerConnection.ontrack = event =>{
-            console.log('ontrack')
-            remoteAudio.srcObject = event.streams[0];
-        }
+
     
         // ICE候補のハンドリング
         peerConnection.onicecandidate = event => {
@@ -179,8 +183,10 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
                 console.log("ICE候補の収集が完了しました。");
             }
         };
+
+
     }
-    let iceCandidateQueue = []
+
     async function createOffer(accountId) {
         console.log('called createOffer')
     
@@ -188,24 +194,24 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
     
         const peerConnection = new RTCPeerConnection(configuration);
         peerConnections[accountId] = peerConnection;
+        //トラックイベントハンドリング
+        peerConnection.ontrack = event =>{
+            console.log('ontrack')
+            remoteAudio.srcObject = event.streams[0];
+        }
 
         setStream(peerConnection)
-    
-        try{
-            const offer = await peerConnection.createOffer()
-            await peerConnection.setLocalDescription(offer);
-                    
-            console.log('sending offer ->', accountId)
-            socket.send(JSON.stringify({
-                'client_message_type': 'p2pOffer',
-                'offer': peerConnection.localDescription,
-                'for': accountId //オファーを出す相手
-            }));
+        const offer = await peerConnection.createOffer()
+        await peerConnection.setLocalDescription(offer);
+                
+        console.log('sending offer ->', accountId)
+        socket.send(JSON.stringify({
+            'client_message_type': 'p2pOffer',
+            'offer': peerConnection.localDescription,
+            'for': accountId //オファーを出す相手
+        }));
 
-            peerConnection_init(accountId, peerConnection)
-        }catch(error) {
-            console.error('Error creating offer:', error);
-        };
+        peerConnection_init(accountId, peerConnection)
     }
     async function handleAnswer(accountId, answer) {
         console.log('アンサーハンドラが呼ばれました')
@@ -229,40 +235,35 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
         //オファーが来たらすぐにピアコネクションを登録して、次に来るICEこうほに対して準備
         const peerConnection = new RTCPeerConnection(configuration);
         peerConnections[accountId] = peerConnection;
-                //トラックイベントハンドリング
-                peerConnection.ontrack = event =>{
-                    console.log('ontrack')
-                    remoteAudio.srcObject = event.streams[0];
-                }
-
-        try{
-        // 受信したオファーをリモートSDPとしてセット
-            console.log("before setRemoteDescription")
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
-            console.log("setRemoteDescription complated")
-            while(iceCandidateQueue.length >= 1){
-                console.log('キュー内のice候補処理中-handelOffer')
-                const queue_candidate = iceCandidateQueue.shift()
-                handleIceCandidate(queue_candidate[0],queue_candidate[1])
-            }
-            //ストリームを取得してからアンサーを作成。
-            await getAudioStream();
-            setStream(peerConnection)
-            const answer = await peerConnection.createAnswer()
-            await peerConnection.setLocalDescription(answer)
-
-            peerConnection_init(accountId, peerConnection)
-
-            console.log('sendding answer -> ', accountId)
-            socket.send(JSON.stringify({
-                'client_message_type': 'p2pAnswer',
-                'answer': peerConnection.localDescription,
-                'for': accountId, //answerを返す相手
-            }));
-    
-        }catch(error) {
-            console.error("Error handling offer:", error);
+        //トラックイベントハンドリング
+        peerConnection.ontrack = event =>{
+            console.log('ontrack')
+            remoteAudio.srcObject = event.streams[0];
         }
+        // 受信したオファーをリモートSDPとしてセット
+        console.log("before setRemoteDescription")
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+        console.log("setRemoteDescription complated")
+        while(iceCandidateQueue.length >= 1){
+            console.log('キュー内のice候補処理中-handelOffer')
+            const queue_candidate = iceCandidateQueue.shift()
+            handleIceCandidate(queue_candidate[0],queue_candidate[1])
+        }
+        //ストリームを取得
+        await getAudioStream();
+        setStream(peerConnection)
+        const answer = await peerConnection.createAnswer()
+        await peerConnection.setLocalDescription(answer)
+
+        peerConnection_init(accountId, peerConnection)
+
+        console.log('sendding answer -> ', accountId)
+        socket.send(JSON.stringify({
+            'client_message_type': 'p2pAnswer',
+            'answer': peerConnection.localDescription,
+            'for': accountId, //answerを返す相手
+        }));
+
     }
     function handleIceCandidate(accountId, candidate) {
         console.log('ICE候補ハンドラが呼ばれました')
@@ -284,6 +285,15 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
     processMessageQueue();
 })
 
+
+// 4. 音声をトグル
+function toggle_muteAudio(stream) {
+    const audioTrack = stream.getAudioTracks()[0]
+    audioTrack.enabled = !audioTrack.enabled
+    const value = audioTrack.enabled ? "音声が再開されました" : "音声がミュートされました"
+    console.log(value)
+    toggle_muteAudioButton.textContent = value
+}
 
 function mainloop(){
     if(goban){
