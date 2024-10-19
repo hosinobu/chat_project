@@ -6,7 +6,7 @@ import {
     } from "./elements.js";
 const socket = getSocket();
 socket.registerFunction('chat', (data)=>{
-    chat_add(chatLog, data.from + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
+    chat_add(chatLog, data.sender + ' -> ' + data.content,"div",data.image_url,data.thumbnail_url)
     chatLog.scrollTop = chatLog.scrollHeight - chatLog.clientHeight;
 })
 function sendMessage(){

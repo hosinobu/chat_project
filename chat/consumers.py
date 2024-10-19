@@ -37,9 +37,9 @@ class SendMethodMixin():
     #全てのメッセージは最終的にこの関数からクライアントに送られる
     async def send_message(self, event):
         logger.info(event['server_message_type'])
-        #fromが設定されてなければ、ソケット自身からのメッセージ
-        if not event.get('from'):
-            event['from'] = self.user.account_id
+        #senderが設定されてなければ、ソケット自身からのメッセージ
+        if not event.get('sender'):
+            event['sender'] = self.user.account_id
         await self.send(text_data=json.dumps({
             **event
         }))
@@ -52,7 +52,7 @@ class SendMethodMixin():
             {
                 'type': 'send_message',
                 'server_message_type': server_message_type,
-                'from': self.user.account_id, #誰からのメッセージかを設定
+                'sender': self.user.account_id, #誰からのメッセージかを設定
                 **kwargs
             }
         )
@@ -93,11 +93,11 @@ class SendMethodMixin():
             logger.info(f"{name} {content} {stamp} {img} {thumbnail}")
 
             await self.send_message_to_client('chat',
-                name = name,
+                sender = name,
                 content = content,
                 timestamp = stamp,
                 image_url = img,
-                thumbnail_url = thumbnail
+                thumbnail_url = thumbnail,
             )
 
 
@@ -412,7 +412,7 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
             case 'p2pOffer':
                 offer_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
                 if offer_socket:
-                    text_data_json['from'] = self.user.account_id
+                    text_data_json['sender'] = self.user.account_id
                     await self.p2psend_message(offer_socket, 'p2pOffer', text_data_json)
                 else:
                     self.log_socket_error(text_data_json['for'])
@@ -420,7 +420,7 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
             case 'p2pAnswer':
                 offer_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
                 if offer_socket:
-                    text_data_json['from'] = self.user.account_id
+                    text_data_json['sender'] = self.user.account_id
                     await self.p2psend_message(offer_socket, 'p2pAnswer', text_data_json)
                 else:
                     self.log_socket_error(text_data_json['for'])
@@ -428,7 +428,7 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
             case 'p2pIceCandidate':
                 offer_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
                 if offer_socket:
-                    text_data_json['from'] = self.user.account_id
+                    text_data_json['sender'] = self.user.account_id
                     await self.p2psend_message(offer_socket, 'p2pIceCandidate', text_data_json)
                 else:
                     self.log_socket_error(text_data_json['for'])

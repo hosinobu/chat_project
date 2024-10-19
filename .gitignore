@@ -6,3 +6,6 @@ staticfiles/
 # SSL/TLS certificate and key files
 localhost.crt
 localhost.key
+
+# local database file
+db.sqlite3

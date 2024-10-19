@@ -50,7 +50,7 @@ async def handle_chat_message(request, roomid):
         await channel_layer.group_send(group_name,{
             'type': 'send_message',
             'server_message_type' : 'chat',
-            'from': request.user.account_id,
+            'sender': request.user.account_id,
             'content' : content,
             'thumbnail_url': thumbnail_url,
             'image_url': image_url

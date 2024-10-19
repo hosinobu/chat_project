@@ -77,16 +77,16 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
     
     socket.registerFunction('p2pOffer',(data)=>{
         console.log('オファーハンドラを呼びます')
-        handleOffer(data.from, data.offer);
+        handleOffer(data.sender, data.offer);
     })
     socket.registerFunction('p2pAnswer',(data)=>{
         console.log('アンサーハンドラを呼びます')
-        handleAnswer(data.from, data.answer);
+        handleAnswer(data.sender, data.answer);
     })
     
     socket.registerFunction('p2pIceCandidate',(data)=>{
         console.log('ICE候補ハンドラを呼びます')
-        handleIceCandidate(data.from, data.candidate)
+        handleIceCandidate(data.sender, data.candidate)
     })
     makeBoardModal.addEventListener('close', () => {
         switch(makeBoardModal.returnValue){
@@ -231,7 +231,7 @@ initializeWebSocket("chat/" + window.roomid).then( async (socket) =>{
         }
     }
     async function handleOffer(accountId, offer) {
-        console.log('オファーハンドラが呼ばれました from', accountId)
+        console.log('オファーハンドラが呼ばれました sender', accountId)
         //オファーが来たらすぐにピアコネクションを登録して、次に来るICEこうほに対して準備
         const peerConnection = new RTCPeerConnection(configuration);
         peerConnections[accountId] = peerConnection;
