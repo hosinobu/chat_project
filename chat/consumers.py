@@ -37,7 +37,7 @@ class SendMethodMixin():
     #全てのメッセージは最終的にこの関数からクライアントに送られる
     async def send_message(self, event):
         logger.info(event['server_message_type'])
-        #senderが設定されてなければ、自分自身からのメッセージ
+        #senderが設定されてなければ、このソケットからのメッセージ
         if not event.get('sender'):
             event['sender'] = self.user.account_id
         await self.send(text_data=json.dumps({
@@ -59,7 +59,6 @@ class SendMethodMixin():
 
     #クライアントに返信(送信)
     async def send_message_to_client(self, server_message_type, **kwargs):
-        logger.info(f"sending message ->  {kwargs}")
         await self.send_message({
             'server_message_type': server_message_type,
             **kwargs
@@ -261,7 +260,6 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
 
     async def connect(self):
 
-
         self.user = self.scope["user"]
         self.room_id = self.scope['url_route']['kwargs']['room_id']
         self.room_group_name = self.room_id
@@ -416,11 +414,10 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
         logger.info(f"sendp2p_message {message_type}")
         target_socket = RoomConsumer.serchsocket.get(text_data['for'])
         if target_socket:
-            text_data['server_message_type'] = message_type
             text_data['sender'] = self.user.account_id
-            await target_socket.send_message(text_data)
+            await target_socket.send_message_to_client(message_type, **text_data)
         else:
-            print(f"Error: Socket for account {text_data['for']} not found.")        
+            print(f"Error: Socket for account {text_data['for']} not found.")
         
 
 #######################################################################################
@@ -461,7 +458,6 @@ async def delete_room_after_timeout(room_id, timeout=60):
                 logger.info(f"Room {room_id} deleted.")
 
                 if LobbyConsumer.users:
-                    #部屋を削除したメッセージを任意のソケットを借りてブロードキャスト
                     await next(iter(LobbyConsumer.users)).send_message_to_group("make_room")
             else:
                 logger.info(f"Room {room_id} still has users.")
@@ -499,5 +495,5 @@ def save_message(room, user, content):
 def get_previous_messages(room, message_limit = 50, time = None):
     result = ChatMessage.objects.filter(room=room)
     if time:
-        result = result.filter(timestamp__gte = timezone.now()-timedelta(minutes=time))
+        result = result.filter(timestamp__gte = timezone.now() - timedelta(minutes=time))
     return list(result.order_by('-timestamp')[:message_limit][::-1])
