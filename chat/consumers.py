@@ -35,7 +35,7 @@ GLOBAL_LOBBY_ID = GLOBAL_LOBBY.id
 class SendMethodMixin():
 
     #全てのメッセージは最終的にこの関数からクライアントに送られる
-    async def send_message(self, event):
+    async def send_message_finally(self, event):
         logger.info(event['server_message_type'])
         #senderが設定されてなければ、このソケットからのメッセージ
         if not event.get('sender'):
@@ -50,7 +50,7 @@ class SendMethodMixin():
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                'type': 'send_message',
+                'type': 'send_message_finally',
                 'server_message_type': server_message_type,
                 'sender': self.user.account_id, #誰からのメッセージかを設定
                 **kwargs
@@ -58,8 +58,8 @@ class SendMethodMixin():
         )
 
     #クライアントに返信(送信)
-    async def send_message_to_client(self, server_message_type, **kwargs):
-        await self.send_message({
+    async def send_message(self, server_message_type, **kwargs):
+        await self.send_message_finally({
             'server_message_type': server_message_type,
             **kwargs
         })
@@ -91,7 +91,7 @@ class SendMethodMixin():
 
             logger.info(f"{name} {content} {stamp} {img} {thumbnail}")
 
-            await self.send_message_to_client('chat',
+            await self.send_message('chat',
                 sender = name,
                 content = content,
                 timestamp = stamp,
@@ -127,7 +127,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
             )
 
             await self.accept()
-            await self.send_message_to_client('your_account_id', account_id = self.user.account_id, is_server = True)
+            await self.send_message('your_account_id', account_id = self.user.account_id, is_server = True)
             self.last_active_time = time.time()
             self.check_timeout_task = asyncio.create_task(self.check_timeout())
 
@@ -182,7 +182,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
             case 'get_lobby_id':
 
                 logger.info(f"{client_message_type} -> {GLOBAL_LOBBY_ID}")
-                await self.send_message_to_client(client_message_type, result = GLOBAL_LOBBY_ID)
+                await self.send_message(client_message_type, result = GLOBAL_LOBBY_ID)
                 
             case 'chat':
 
@@ -206,7 +206,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                         return list()
                     return list(chatroom)
                 room_list = { i.name : i.id for i in await make_room()}
-                await self.send_message_to_client(client_message_type)
+                await self.send_message(client_message_type)
                 await self.send_message_to_group(client_message_type, roomlist = room_list)
             
             case 'room-list-update':
@@ -223,7 +223,7 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 url = reverse("user_profile:user_top",
                         args = [text_data_json['userid']]
                     )
-                await self.send_message_to_client(client_message_type,
+                await self.send_message(client_message_type,
                     url = url
                 )
 
@@ -242,14 +242,14 @@ class LobbyConsumer(AsyncWebsocketConsumer,SendMethodMixin):
                 return []
         result = await get_chat_room_all()
         room_list = { i.name : i.id for i in result}
-        await self.send_message_to_client(message_type, roomlist = room_list)
+        await self.send_message(message_type, roomlist = room_list)
         
     async def check_timeout(self, wait_minute = 5, loop_wait = 20):
         waittime = loop_wait if loop_wait >= 1 else 1
         end_time = wait_minute * 60
         while time.time() < self.last_active_time + end_time:
             await asyncio.sleep(waittime)
-        await self.send_message_to_client('timeout')
+        await self.send_message('timeout')
         await self.close()
 
 class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
@@ -287,7 +287,7 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
             )
             await self.accept()
 
-            await self.send_message_to_client('your_account_id', account_id = self.user.account_id)
+            await self.send_message('your_account_id', account_id = self.user.account_id)
             await self.send_message_to_group(
                 'join',   
                 name = self.user.account_id, #入室者名
@@ -353,7 +353,7 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
                 url = reverse("user_profile:user_top",
                         args = [text_data_json['userid']]
                     )
-                await self.send_message_to_client(client_message_type,
+                await self.send_message(client_message_type,
                     url = url
                 )
 
@@ -415,7 +415,7 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
         target_socket = RoomConsumer.serchsocket.get(text_data['for'])
         if target_socket:
             text_data['sender'] = self.user.account_id
-            await target_socket.send_message_to_client(message_type, **text_data)
+            await target_socket.send_message(message_type, **text_data)
         else:
             print(f"Error: Socket for account {text_data['for']} not found.")
         
@@ -481,7 +481,7 @@ async def user_list_update(socket, room_id, message_type):
             return []
     user_list_ids = [[user.account_id, user.id] for user in await get_user_list()]
     print(user_list_ids)
-    await socket.send_message_to_client(
+    await socket.send_message(
         message_type,
         userlist = user_list_ids
     )
