@@ -410,38 +410,23 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
                     await self.send_message_to_group(client_message_type, **board)
                     
             case 'p2pOffer':
-                target_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
-                if target_socket:
-                    text_data_json['sender'] = self.user.account_id
-                    await self.p2psend_message(target_socket, 'p2pOffer', text_data_json)
-                else:
-                    self.log_socket_error(text_data_json['for'])
+                await self.p2psend_message('p2pOffer', text_data_json)
 
             case 'p2pAnswer':
-                target_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
-                if target_socket:
-                    text_data_json['sender'] = self.user.account_id
-                    await self.p2psend_message(target_socket, 'p2pAnswer', text_data_json)
-                else:
-                    self.log_socket_error(text_data_json['for'])
+                await self.p2psend_message('p2pAnswer', text_data_json)
 
             case 'p2pIceCandidate':
-                target_socket = RoomConsumer.serchsocket.get(text_data_json['for'])
-                if target_socket:
-                    text_data_json['sender'] = self.user.account_id
-                    await self.p2psend_message(target_socket, 'p2pIceCandidate', text_data_json)
-                else:
-                    self.log_socket_error(text_data_json['for'])
+                await self.p2psend_message('p2pIceCandidate', text_data_json)
 
-    async def p2psend_message(self, socket, message_type, text_data):
+    async def p2psend_message(self, message_type, text_data):
         logger.info(f"sendp2p_message {message_type}")
-        await socket.send_message({
-            'server_message_type': message_type,
-            **text_data
-        })
-
-    def log_socket_error(self, account_id):
-        print(f"Error: Socket for account {account_id} not found.")
+        target_socket = RoomConsumer.serchsocket.get(text_data['for'])
+        if target_socket:
+            text_data['server_message_type'] = message_type
+            text_data['sender'] = self.user.account_id
+            await target_socket.send_message(text_data)
+        else:
+            print(f"Error: Socket for account {text_data['for']} not found.")        
         
 
 #######################################################################################
