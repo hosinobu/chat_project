@@ -1,8 +1,8 @@
 export default function logging_server_message(message){
-	let sender = message.sender //fromはサーバーが設定してくる
+	let sender = message.sender //senderは誰からのメッセージか？
 	let color = ""
 	let size = "font-size: 13px"
-	let logstyle = size
+	let logstyle = ""
 
 	if(message.logstyle){//メッセージにスタイルが設定されていればそれを優先
 		logstyle = message.logstyle
@@ -11,7 +11,7 @@ export default function logging_server_message(message){
 			sender = "server"
 			color = "color: black;"
 		}else{　//他のユーザーからのメッセージ
-			color = "color: red;"
+			color = "color: brown;"
 		}
 		logstyle += color + size
 	}
