@@ -409,14 +409,8 @@ class RoomConsumer(AsyncWebsocketConsumer, SendMethodMixin):
                 if result:
                     await self.send_message_to_group(client_message_type, **board)
                     
-            case 'p2pOffer':
-                await self.p2psend_message('p2pOffer', text_data_json)
-
-            case 'p2pAnswer':
-                await self.p2psend_message('p2pAnswer', text_data_json)
-
-            case 'p2pIceCandidate':
-                await self.p2psend_message('p2pIceCandidate', text_data_json)
+            case 'p2pOffer' | 'p2pAnswer' | 'p2pIceCandidate':
+                await self.p2psend_message(client_message_type, text_data_json)
 
     async def p2psend_message(self, message_type, text_data):
         logger.info(f"sendp2p_message {message_type}")
